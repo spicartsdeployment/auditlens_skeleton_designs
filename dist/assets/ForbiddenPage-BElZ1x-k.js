@@ -1,0 +1,6 @@
+import{n as s,u as n,j as e,Z as a}from"./index-D80o23mf.js";/**
+ * @license lucide-react v0.383.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const c=s("ShieldOff",[["path",{d:"m2 2 20 20",key:"1ooewy"}],["path",{d:"M5 5a1 1 0 0 0-1 1v7c0 5 3.5 7.5 7.67 8.94a1 1 0 0 0 .67.01c2.35-.82 4.48-1.97 5.9-3.71",key:"1jlk70"}],["path",{d:"M9.309 3.652A12.252 12.252 0 0 0 11.24 2.28a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1v7a9.784 9.784 0 0 1-.08 1.264",key:"18rp1v"}]]);function r(){const t=n();return e.jsxs("div",{className:"flex flex-col items-center justify-center min-h-[60vh] text-center px-4",children:[e.jsx(c,{className:"h-20 w-20 mb-6",style:{color:"#CBD5E1"},"aria-hidden":!0}),e.jsx("h1",{className:"text-3xl font-bold text-neutral-900 mb-2",children:"Access Denied"}),e.jsx("p",{className:"text-neutral-500 mb-2",children:"You don't have permission to view this page."}),e.jsx("p",{className:"text-sm text-neutral-400 mb-6",children:"Contact your Admin to request access."}),e.jsxs("div",{className:"flex gap-3",children:[e.jsx(a,{variant:"secondary",onClick:()=>t(-1),children:"Go Back"}),e.jsx(a,{onClick:()=>t("/"),children:"Dashboard"})]})]})}export{r as ForbiddenPage};

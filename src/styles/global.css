@@ -1,0 +1,427 @@
+@import './tokens.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ─────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-bg);   /* #F8FAFC — soft slate-50 canvas */
+    color: var(--color-text-primary);    /* #0F172A — deep charcoal, not pure black */
+    margin: 0; padding: 0;
+    transition: background-color 200ms, color 200ms;
+  }
+
+  /* Heading hierarchy — all #0F172A, no pure black */
+  h1 { @apply text-2xl font-bold;   color: #0F172A; line-height: 1.25; }
+  h2 { @apply text-xl  font-bold;   color: #0F172A; line-height: 1.30; }
+  h3 { @apply text-lg  font-semibold; color: #0F172A; line-height: 1.35; }
+  h4 { @apply text-base font-semibold; color: #0F172A; line-height: 1.40; }
+  h5, h6 { @apply text-sm font-semibold; color: #1E293B; line-height: 1.50; }
+
+  /* Body text — secondary (#64748B) only used on white surfaces */
+  p { color: var(--color-text-secondary); line-height: 1.6; }
+
+  /* Selection */
+  ::selection {
+    background-color: rgba(5,132,199,0.12);
+    color: #0F172A;
+  }
+
+  /* Focus ring — brand accent, visible on all backgrounds */
+  :focus-visible {
+    outline: 2px solid #0584C7;
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Links — brand-text meets AA on white */
+  a { color: var(--color-brand-text); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+}
+
+/* ── Utilities ───────────────────────────────────────────── */
+@layer utilities {
+  /* Glassmorphism */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+  }
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Semantic backgrounds */
+  .bg-surface    { background-color: var(--color-surface); }
+  .bg-surface-2  { background-color: var(--color-surface-2); }
+  .bg-surface-3  { background-color: var(--color-surface-3); }
+  .bg-app        { background-color: var(--color-bg); }
+
+  /* Text roles */
+  .text-primary-content   { color: var(--color-text-primary); }   /* #0F172A */
+  .text-secondary-content { color: var(--color-text-secondary); } /* #64748B on white surfaces */
+  .text-muted-content     { color: var(--color-text-muted); }     /* #94A3B8 decorative */
+  .text-brand             { color: var(--color-brand-text); }     /* #0470A9 — AA on white */
+
+  /* Brand / CTA gradients */
+  .gradient-cta {
+    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  }
+  .gradient-brand {
+    background: linear-gradient(135deg, #0584C7 0%, #035D8D 100%);
+  }
+  .gradient-accent  { background: linear-gradient(135deg, #0F766E 0%, #0D9488 100%); }
+  .gradient-warning { background: linear-gradient(135deg, #B45309 0%, #D97706 100%); }
+  .gradient-danger  { background: linear-gradient(135deg, #B91C1C 0%, #DC2626 100%); }
+  .gradient-success { background: linear-gradient(135deg, #166534 0%, #16A34A 100%); }
+  .gradient-sidebar { background: linear-gradient(to bottom, #0f172a, #1e293b, #0f172a); }
+
+  /* Keep legacy alias used by Login logo */
+  .gradient-primary { background: linear-gradient(135deg, #0584C7 0%, #035D8D 100%); }
+
+  /* AI text gradient */
+  .ai-gradient-text {
+    background: linear-gradient(to right, #4f46e5, #9333ea);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow helpers */
+  .glow-brand   { box-shadow: 0 0 16px rgba(5,132,199,0.20); }
+  .glow-primary { box-shadow: 0 0 16px rgba(5,132,199,0.16); }
+  .glow-accent  { box-shadow: 0 0 16px rgba(13,148,136,0.16); }
+
+  /* Scrollbar utils */
+  .hide-scrollbar  { scrollbar-width: none; -ms-overflow-style: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar    { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar   { display: none; }
+}
+
+/* ── Components ──────────────────────────────────────────── */
+@layer components {
+
+  /* ════════════════════════════════════════════════════════
+     CARDS — white surface on slate-50 app bg
+     ════════════════════════════════════════════════════════ */
+  .card {
+    background-color: var(--color-surface);   /* #FFFFFF */
+    border-radius: 16px;
+    border: 1px solid var(--color-border);    /* #E2E8F0 */
+    box-shadow: var(--shadow-card);
+  }
+  .dark .card {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Glass variant (topbar, modals) */
+  .card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Larger radius card */
+  .card-xl {
+    background-color: var(--color-surface);
+    border-radius: 24px;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+  }
+  .dark .card-xl {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     KPI STAT CARD — all white, gray borders (no color tints)
+     Depth comes from gray-scale hierarchy, not color
+     ════════════════════════════════════════════════════════ */
+  .stat-card-primary,
+  .stat-card-accent,
+  .stat-card-warning,
+  .stat-card-danger {
+    background-color: #FFFFFF;
+    border-color: #E2E8F0;
+    box-shadow: 0 1px 3px 0 rgba(15,23,42,0.06);
+  }
+  .stat-card-primary:hover,
+  .stat-card-accent:hover,
+  .stat-card-warning:hover,
+  .stat-card-danger:hover {
+    border-color: #CBD5E1;
+    box-shadow: 0 4px 12px 0 rgba(15,23,42,0.10);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     BUTTONS — 10% accent color rule
+     Primary CTA = #0F172A charcoal (deep, professional)
+     Brand/interactive = #0584C7 (links, active states)
+     ════════════════════════════════════════════════════════ */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold
+           transition-all duration-150 select-none cursor-pointer;
+    @apply active:scale-[0.98];
+  }
+
+  /* PRIMARY — deep charcoal #0F172A — the main CTA */
+  .btn-primary {
+    @apply btn rounded-xl px-4 py-2 text-sm;
+    background-color: #0F172A;             /* #0F172A on white = 19.6:1 ✓ AAA */
+    color: #FFFFFF;
+    box-shadow: 0 1px 3px 0 rgba(15,23,42,0.20);
+  }
+  .btn-primary:hover  { background-color: #1E293B; }
+  .btn-primary:active { background-color: #334155; }
+  .btn-primary:disabled { opacity: 0.50; cursor: not-allowed; }
+
+  /* BRAND — #0584C7 for interactive/secondary actions */
+  .btn-brand {
+    @apply btn rounded-xl px-4 py-2 text-sm text-white;
+    background-color: #0584C7;
+    box-shadow: 0 1px 3px 0 rgba(5,132,199,0.25);
+  }
+  .btn-brand:hover  { background-color: #0470A9; }
+  .btn-brand:active { background-color: #035D8D; }
+  .btn-brand:disabled { opacity: 0.50; cursor: not-allowed; }
+
+  /* SECONDARY — outlined */
+  .btn-secondary {
+    @apply btn rounded-xl px-4 py-2 text-sm bg-white border shadow-sm;
+    color: #334155;                         /* slate-700 — 10.7:1 on white ✓ */
+    border-color: #E2E8F0;
+  }
+  .btn-secondary:hover  { background-color: #F8FAFC; border-color: #CBD5E1; }
+  .btn-secondary:active { background-color: #F1F5F9; }
+
+  /* GHOST — no border */
+  .btn-ghost {
+    @apply btn rounded-xl px-4 py-2 text-sm;
+    color: #64748B;
+  }
+  .btn-ghost:hover  { background-color: #F1F5F9; color: #0F172A; }
+
+  /* PILL — small rounded full */
+  .btn-pill {
+    @apply btn rounded-full px-3 py-1.5 text-xs text-white;
+    background-color: #0F172A;
+  }
+  .btn-pill:hover { background-color: #1E293B; }
+
+  /* PILL BRAND */
+  .btn-pill-brand {
+    @apply btn rounded-full px-3 py-1.5 text-xs text-white;
+    background-color: #0584C7;
+  }
+  .btn-pill-brand:hover { background-color: #0470A9; }
+
+  /* DARK CTA (reference style) */
+  .btn-dark {
+    @apply btn rounded-xl px-4 py-2 text-sm text-white shadow-lg;
+    background-color: #0F172A;
+  }
+  .btn-dark:hover { background-color: #1E293B; }
+
+  /* ════════════════════════════════════════════════════════
+     BADGES — gray canvas base, semantic text color only
+     Background: #F8FAFC | Border: #E2E8F0 | Text: semantic
+     ════════════════════════════════════════════════════════ */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 2px 8px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+  }
+  /* Status text colors — minimal, purposeful */
+  .badge-draft      { @apply badge; color: #64748B; }
+  .badge-todo       { @apply badge; color: #64748B; }
+  .badge-pending    { @apply badge; color: #92400E; }   /* amber-800 4.9:1 on F8FAFC ✓ */
+  .badge-inprogress { @apply badge; color: #1E40AF; }   /* blue-800  5.4:1 on F8FAFC ✓ */
+  .badge-inreview   { @apply badge; color: #1E40AF; }
+  .badge-submitted  { @apply badge; color: #065F46; }   /* emerald-800 6.7:1 ✓ */
+  .badge-approved   { @apply badge; color: #166534; }   /* green-800 6.8:1 ✓ */
+  .badge-filed      { @apply badge; color: #166534; }
+  .badge-done       { @apply badge; color: #166534; }
+  .badge-overdue    { @apply badge; color: #991B1B; }   /* red-800   6.5:1 ✓ */
+  .badge-critical   { @apply badge; color: #7F1D1D; border-color: #FECACA; }
+
+  /* ── Severity ─────────────────────────────────────────── */
+  .severity-critical { @apply badge; color: #7F1D1D; border-color: #FECACA; }
+  .severity-high     { @apply badge; color: #7C2D12; border-color: #FED7AA; }
+  .severity-medium   { @apply badge; color: #92400E; border-color: #FDE68A; }
+  .severity-low      { @apply badge; color: #1E3A8A; border-color: #BFDBFE; }
+  .severity-info     { @apply badge; color: #475569; }
+
+  /* ════════════════════════════════════════════════════════
+     NAV STATES — sidebar icon rail
+     Active uses brand #0584C7 (UI component, not text)
+     ════════════════════════════════════════════════════════ */
+  .nav-active {
+    color: #FFFFFF;
+    background-color: #0584C7;
+    box-shadow: 0 2px 6px rgba(5,132,199,0.30);
+  }
+  .nav-inactive {
+    color: #64748B;   /* slate-500 */
+  }
+  .nav-inactive:hover {
+    color: #FFFFFF;
+    background-color: rgba(255,255,255,0.10);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     INPUTS
+     ════════════════════════════════════════════════════════ */
+  .input {
+    @apply w-full rounded-xl border px-3 py-2 text-sm transition-shadow duration-150;
+    background-color: var(--color-surface);   /* #FFFFFF */
+    border-color: var(--color-border);        /* #E2E8F0 */
+    color: var(--color-text-primary);         /* #0F172A */
+  }
+  .input::placeholder { color: #94A3B8; }
+  .input:focus {
+    outline: none;
+    border-color: #0584C7;
+    box-shadow: 0 0 0 3px rgba(5,132,199,0.10);
+  }
+  .dark .input {
+    background-color: #1E293B;
+    border-color: #334155;
+    color: #F1F5F9;
+  }
+
+  /* ════════════════════════════════════════════════════════
+     FILTER CHIPS — reference style
+     ════════════════════════════════════════════════════════ */
+  .chip-active   {
+    @apply rounded-lg text-[11px] font-bold px-3 py-1.5 shadow-sm;
+    background-color: #0F172A;
+    color: #FFFFFF;
+  }
+  .chip-inactive {
+    @apply rounded-lg border text-[11px] font-medium px-3 py-1.5 shadow-sm
+           bg-white text-slate-600 border-slate-200 hover:bg-slate-50;
+  }
+
+  /* ════════════════════════════════════════════════════════
+     TABLE — enterprise data density
+     ════════════════════════════════════════════════════════ */
+  .data-table { @apply w-full text-sm; }
+
+  .data-table thead tr {
+    background-color: var(--color-surface-2);   /* #F8FAFC */
+  }
+  .data-table th {
+    @apply px-4 py-2.5 text-left;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748B;                             /* slate-500, 4.6:1 on white ✓ */
+    border-bottom: 1px solid var(--color-border);
+  }
+  .data-table td {
+    @apply px-4 py-3;
+    color: #334155;                             /* slate-700, 10.7:1 on white ✓ */
+    border-bottom: 1px solid var(--color-border-subtle);
+    font-size: 13px;
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover td {
+    background-color: var(--color-surface-2);
+    transition: background-color 100ms;
+  }
+}
+
+/* ── Skip link ───────────────────────────────────────────── */
+.skip-link {
+  position: absolute; top: -100%; left: 16px; z-index: 9999;
+  padding: 8px 16px;
+  background: #0F172A; color: #FFFFFF;          /* 19.6:1 ✓ */
+  border-radius: 8px; font-weight: 600;
+  text-decoration: none; transition: top 120ms;
+}
+.skip-link:focus { top: 16px; }
+
+/* ── Custom scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar          { width: 4px; height: 4px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: #E2E8F0; border-radius: 999px; } /* border-subtle */
+::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.25s ease-out; }
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* ── Sidebar active indicator dot ───────────────────────── */
+.nav-dot {
+  position: absolute; right: -14px;
+  width: 4px; height: 4px;
+  border-radius: 9999px;
+  background: #FFFFFF;
+}
+
+/* ── Thin scrollbar (webkit) ─────────────────────────────── */
+.overflow-y-scroll::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+.overflow-y-scroll::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.overflow-y-scroll::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 999px;
+}
+.overflow-y-scroll::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #CBD5E1;
+}

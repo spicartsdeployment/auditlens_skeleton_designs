@@ -1,0 +1,178 @@
+/* ─────────────────────────────────────────────────────────────
+   AuditLens Design Tokens  ·  Enterprise 70/20/10 palette
+   ─────────────────────────────────────────────────────────────
+   CONTRAST MAP (WCAG AA requires ≥ 4.5:1 for normal text)
+   ┌─────────────────────────┬──────────────┬───────────┬────────┐
+   │ Foreground              │ Background   │  Ratio    │ Grade  │
+   ├─────────────────────────┼──────────────┼───────────┼────────┤
+   │ #0F172A (text-primary)  │ #FFFFFF      │  19.6 :1  │ AAA ✓  │
+   │ #0F172A (text-primary)  │ #F8FAFC      │  17.8 :1  │ AAA ✓  │
+   │ #1E293B (slate-800)     │ #FFFFFF      │  15.2 :1  │ AAA ✓  │
+   │ #475569 (slate-600)     │ #FFFFFF      │   5.9 :1  │ AA  ✓  │
+   │ #475569 (slate-600)     │ #F8FAFC      │   5.4 :1  │ AA  ✓  │
+   │ #64748B (slate-500)     │ #FFFFFF      │   4.6 :1  │ AA  ✓  │
+   │ #64748B (slate-500)     │ #E2E8F0      │   3.5 :1  │ UI  ✓  │
+   │ #FFFFFF (white)         │ #0F172A      │  19.6 :1  │ AAA ✓  │
+   │ #FFFFFF (white)         │ #0584C7      │   3.8 :1  │ UI* ✓  │
+   │ #0470A9 (primary-600)   │ #FFFFFF      │   4.9 :1  │ AA  ✓  │
+   └─────────────────────────┴──────────────┴───────────┴────────┘
+   * UI components / large text only — not for body copy
+   ─────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── PRIMARY BRAND: #0584C7 interactive accent ─────────── */
+  --color-primary-50:  #EBF5FD;
+  --color-primary-100: #C5E5F8;
+  --color-primary-200: #8CCCF2;
+  --color-primary-300: #52B2EB;
+  --color-primary-400: #2499E0;
+  --color-primary-500: #0584C7;   /* brand accent — buttons, icons, active */
+  --color-primary-600: #0470A9;   /* 4.9:1 on white — links, text on light bg */
+  --color-primary-700: #035D8D;
+  --color-primary-800: #024A71;
+  --color-primary-900: #013754;
+
+  /* ── ACCENT (Teal) ──────────────────────────────────────── */
+  --color-accent-50:  #F0FDFA;
+  --color-accent-100: #CCFBF1;
+  --color-accent-500: #0D9488;
+  --color-accent-600: #0F766E;
+
+  /* ── WARNING (Amber) ────────────────────────────────────── */
+  --color-warning-50:  #FFFBEB;
+  --color-warning-100: #FEF3C7;
+  --color-warning-500: #D97706;
+  --color-warning-600: #B45309;
+
+  /* ── DANGER (Red) ───────────────────────────────────────── */
+  --color-danger-50:  #FEF2F2;
+  --color-danger-100: #FEE2E2;
+  --color-danger-500: #DC2626;
+  --color-danger-600: #B91C1C;
+
+  /* ── NEUTRAL / SLATE SCALE ──────────────────────────────── */
+  --color-neutral-50:  #F8FAFC;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-300: #CBD5E1;
+  --color-neutral-400: #94A3B8;
+  --color-neutral-500: #64748B;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1E293B;
+  --color-neutral-900: #0F172A;
+
+  /* ════════════════════════════════════════════════════════════
+     70/20/10 ENTERPRISE PALETTE — SEMANTIC TOKENS
+     ════════════════════════════════════════════════════════════
+
+     70 % DOMINANT CANVAS
+     ─────────────────── */
+  --color-surface:   #FFFFFF;     /* cards, panels, inputs — pure white */
+  --color-surface-2: #F8FAFC;     /* secondary surfaces, table rows */
+  --color-surface-3: #F1F5F9;     /* tertiary, hover states */
+  --color-bg:        #F8FAFC;     /* app shell background — softer than gray-100 */
+
+  /*  20 % SECONDARY FRAMEWORK
+     ─────────────────────── */
+  --color-border:    #E2E8F0;     /* dividers, card borders, inactive states */
+  --color-border-subtle: #F1F5F9; /* very subtle separators */
+
+  /* Text roles — all meet WCAG AA on #FFFFFF and #F8FAFC */
+  --color-text-primary:   #0F172A;  /* 19.6:1 on white — headings, body */
+  --color-text-secondary: #64748B;  /*  4.6:1 on white — captions, labels  */
+  --color-text-muted:     #94A3B8;  /*  2.3:1 — decorative / placeholder only */
+
+  /* Note: text-secondary (#64748B) is used exclusively on white (#FFFFFF)
+     surfaces where it meets AA. On the app bg (#F8FAFC) use slate-600
+     (#475569, 5.4:1) for any normal-sized body text. */
+
+  /*  10 % ACCENT & TYPOGRAPHY
+     ─────────────────────── */
+  --color-cta-bg:    #0F172A;     /* primary CTA button fill  — 19.6:1 */
+  --color-cta-hover: #1E293B;     /* CTA hover state */
+  --color-cta-text:  #FFFFFF;     /* text on CTA */
+  --color-brand:     #0584C7;     /* brand accent — icons, active nav, highlights */
+  --color-brand-text:#0470A9;     /* brand-colored text — 4.9:1 on white ✓ */
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  /* ── Spacing (4px grid) ─────────────────────────────────── */
+  --space-1: 4px;  --space-2: 8px;   --space-3: 12px;
+  --space-4: 16px; --space-5: 20px;  --space-6: 24px;
+  --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+  /* ── Border Radius ──────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius:      8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  20px;
+  --radius-3xl:  24px;
+  --radius-full: 9999px;
+
+  /* ── Elevation ──────────────────────────────────────────── */
+  --shadow-sm:       0 1px 2px 0 rgba(15,23,42,0.04);
+  --shadow-card:     0 1px 3px 0 rgba(15,23,42,0.06), 0 1px 2px -1px rgba(15,23,42,0.04);
+  --shadow-md:       0 4px 6px -1px rgba(15,23,42,0.08), 0 2px 4px -2px rgba(15,23,42,0.04);
+  --shadow-lg:       0 10px 15px -3px rgba(15,23,42,0.08), 0 4px 6px -4px rgba(15,23,42,0.04);
+  --shadow-dropdown: 0 8px 20px -2px rgba(15,23,42,0.12), 0 2px 4px -2px rgba(15,23,42,0.06);
+  --shadow-soft:     0 4px 20px -2px rgba(15,23,42,0.05);
+  --shadow-glow:     0 0 16px rgba(5,132,199,0.16);
+  --shadow-sidebar:  0 20px 40px -8px rgba(0,0,0,0.45);
+
+  /* ── Glass ──────────────────────────────────────────────── */
+  --glass-bg:        rgba(255,255,255,0.88);
+  --glass-bg-strong: rgba(255,255,255,0.96);
+  --glass-border:    rgba(226,232,240,0.90);
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  --sidebar-width:   64px;
+  --topbar-height:   48px;
+
+  /* ── Transitions ────────────────────────────────────────── */
+  --transition-fast: 100ms ease;
+  --transition-base: 180ms ease;
+  --transition-slow: 280ms ease;
+}
+
+/* ── Dark Mode ────────────────────────────────────────────────
+   Inverts the canvas while preserving the enterprise hierarchy */
+.dark {
+  --color-surface:   #1E293B;
+  --color-surface-2: #263548;
+  --color-surface-3: #2D3F57;
+  --color-bg:        #0F172A;
+  --color-border:    #334155;
+  --color-border-subtle: #1E293B;
+
+  --color-text-primary:   #F1F5F9;   /* slate-100 — 15:1 on dark bg */
+  --color-text-secondary: #94A3B8;   /* slate-400 — 4.8:1 on #1E293B */
+  --color-text-muted:     #64748B;   /* decorative only in dark */
+
+  --color-cta-bg:    #F1F5F9;        /* inverted — light button on dark */
+  --color-cta-hover: #E2E8F0;
+  --color-cta-text:  #0F172A;        /* dark text on light CTA */
+  --color-brand:     #2499E0;        /* lighter brand for dark mode */
+  --color-brand-text:#52B2EB;        /* 4.5:1 on #1E293B */
+
+  --color-neutral-50:  #0F172A;
+  --color-neutral-100: #1E293B;
+  --color-neutral-200: #334155;
+  --color-neutral-300: #475569;
+  --color-neutral-400: #64748B;
+  --color-neutral-500: #94A3B8;
+  --color-neutral-600: #CBD5E1;
+  --color-neutral-700: #E2E8F0;
+  --color-neutral-800: #F1F5F9;
+  --color-neutral-900: #F8FAFC;
+
+  --glass-bg:        rgba(15,23,42,0.80);
+  --glass-bg-strong: rgba(30,41,59,0.92);
+  --glass-border:    rgba(255,255,255,0.07);
+
+  --shadow-card:     0 1px 3px 0 rgba(0,0,0,0.30), 0 1px 2px -1px rgba(0,0,0,0.30);
+  --shadow-glow:     0 0 16px rgba(36,153,224,0.20);
+}
