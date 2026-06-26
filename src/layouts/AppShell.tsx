@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { alertsApi } from '@/shared/api/alerts'
 
 export function AppShell() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const { data: alerts = [] } = useQuery({
     queryKey: ['alerts', 'unread'],
@@ -16,32 +16,42 @@ export function AppShell() {
   })
 
   return (
-    <div className="flex h-dvh overflow-hidden p-3 gap-3" style={{ backgroundColor: 'var(--color-bg)' }}>
+    <div
+      className="flex flex-col h-dvh overflow-hidden p-3 gap-3"
+      style={{ backgroundColor: 'var(--color-bg)' }}
+    >
+      {/* Full-width floating topbar */}
+      <TopBar alertCount={alerts.length} />
 
-      {/* Desktop sidebar — collapses/expands */}
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(o => !o)} />
+      {/* Body: sidebar + main aligned in same row */}
+      <div className="flex flex-1 min-h-0 gap-3">
+        {/* Desktop sidebar */}
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((o) => !o)}
+        />
 
-      {/* Mobile drawer overlay */}
-      <MobileDrawer />
+        {/* Mobile drawer overlay */}
+        <MobileDrawer />
 
-      {/* Main column */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden gap-3">
+        {/* Main column */}
+        <div className="flex flex-1 flex-col min-w-0 overflow-hidden gap-3">
+          <main
+            id="main-content"
+            className="flex-1 overflow-y-auto rounded-3xl pb-20 lg:pb-4"
+            tabIndex={-1}
+            style={{
+              border: '1px solid #cbd5e1',
+              backgroundImage:
+                'linear-gradient(135deg, rgba(5,132,199,0.02) 0%, #f8fafc 50%, rgba(235,245,253,0.4) 100%)',
+            }}
+          >
+            <Outlet />
+          </main>
 
-        {/* Floating topbar */}
-        <TopBar alertCount={alerts.length} />
-
-        {/* Content area */}
-        <main
-          id="main-content"
-          className="flex-1 overflow-y-auto rounded-3xl pb-20 lg:pb-4"
-          tabIndex={-1}
-          style={{ backgroundImage: 'linear-gradient(135deg, rgba(5,132,199,0.02) 0%, #f8fafc 50%, rgba(235,245,253,0.4) 100%)' }}
-        >
-          <Outlet />
-        </main>
-
-        {/* Mobile bottom nav */}
-        <MobileBottomNav />
+          {/* Mobile bottom nav */}
+          <MobileBottomNav />
+        </div>
       </div>
     </div>
   )

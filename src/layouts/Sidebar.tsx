@@ -75,7 +75,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside
-      className="hidden lg:flex flex-col py-4 my-auto h-[88%] rounded-3xl shrink-0 shadow-sidebar transition-all duration-300"
+      className="hidden lg:flex flex-col py-4  h-full rounded-3xl shrink-0 shadow-sidebar transition-all duration-300"
       style={{
         width: collapsed ? '64px' : '200px',
         background: 'linear-gradient(to bottom, #0f172a, #1e293b, #0f172a)',
