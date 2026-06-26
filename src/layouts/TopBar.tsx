@@ -2,7 +2,7 @@ import {
   Bell, Menu, Search, Sun, Moon, Plus,
   FileText, CheckSquare, Users, Briefcase, FolderOpen,
   ShieldAlert, BarChart3, ReceiptText, Scale, Upload,
-  ChevronDown, LogOut, Settings,
+  ChevronDown, LogOut, Settings, UserPlus, Info,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
@@ -14,8 +14,18 @@ import { useMobileMenuStore } from './MobileNav'
 import { authApi } from '@/shared/api/auth'
 import { toast } from 'sonner'
 import { cn } from '@/shared/components/cn'
+import { ProfileSettingsModal } from '@/features/settings/ProfileSettingsModal'
 
 interface TopBarProps { alertCount?: number }
+
+const MOCK_NOTIFICATIONS = [
+  { id: 1, type: 'deadline', title: 'GSTR-1 Due Tomorrow', body: 'Sunrise Textiles · May 2026', time: '2h ago', read: false },
+  { id: 2, type: 'assignment', title: 'Task Assigned to You', body: 'TDS Return 26Q · Sneha Iyer', time: '4h ago', read: false },
+  { id: 3, type: 'approval', title: 'Extension Request Pending', body: 'Rohan Verma · BlueSky Tech Audit', time: '6h ago', read: false },
+  { id: 4, type: 'alert', title: 'Notice Response Overdue', body: 'Green Pharma · ITO Notice', time: '1d ago', read: true },
+  { id: 5, type: 'system', title: 'Document Uploaded', body: 'Redwood Constructions · Balance Sheet', time: '1d ago', read: true },
+  { id: 6, type: 'deadline', title: 'TDS Q4 Filing Due in 3 days', body: 'Apex Auto Parts · 26Q', time: '2d ago', read: true },
+]
 
 const SA_ACTIONS = [
   { label: 'Onboard Client',   icon: Briefcase,   path: '/clients/new', desc: 'Onboard a new client' },
@@ -47,6 +57,21 @@ export function TopBar({ alertCount = 0 }: TopBarProps) {
   const navigate = useNavigate()
   const [quickOpen, setQuickOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [readIds, setReadIds] = useState<number[]>([])
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const unreadCount = MOCK_NOTIFICATIONS.filter(n => !n.read && !readIds.includes(n.id)).length
+
+  const notifIcon = (type: string) => {
+    if (type === 'assignment') return UserPlus
+    if (type === 'approval') return CheckSquare
+    if (type === 'system') return Info
+    return Bell
+  }
+
+  const markAllRead = () => setReadIds(MOCK_NOTIFICATIONS.map(n => n.id))
+  const markRead = (id: number) => setReadIds(prev => prev.includes(id) ? prev : [...prev, id])
 
   const actions = isSuperAdmin() ? SA_ACTIONS : isAdmin() ? ADMIN_ACTIONS : ARTICLE_ACTIONS
   const roleName = user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin CA' : 'Article'
@@ -64,6 +89,7 @@ export function TopBar({ alertCount = 0 }: TopBarProps) {
   }
 
   return (
+    <>
     <header
       className="flex h-12 shrink-0 items-center justify-between rounded-2xl border px-4 shadow-sm gap-3"
       style={{ background: 'var(--glass-bg-strong)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderColor: 'var(--color-border)' }}
@@ -162,18 +188,83 @@ export function TopBar({ alertCount = 0 }: TopBarProps) {
         </button>
 
         {/* Notifications */}
-        <button
-          className="relative flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-          onClick={() => navigate('/workspace')}
-          aria-label={`Notifications${alertCount > 0 ? ` — ${alertCount} unread` : ''}`}
-        >
-          <Bell style={{ width: 15, height: 15 }} aria-hidden />
-          {alertCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white">
-              {alertCount > 9 ? '9+' : alertCount}
-            </span>
+        <div className="relative">
+          <button
+            className="relative flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            onClick={() => setNotifOpen(o => !o)}
+            aria-label={`Notifications${unreadCount > 0 ? ` — ${unreadCount} unread` : ''}`}
+          >
+            <Bell style={{ width: 15, height: 15 }} aria-hidden />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-2xl border border-slate-200 bg-white shadow-dropdown overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-800">Notifications</p>
+                    {unreadCount > 0 && (
+                      <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white px-1">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={markAllRead}
+                    className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+
+                {/* List */}
+                <div className="max-h-80 overflow-y-auto">
+                  {MOCK_NOTIFICATIONS.map(n => {
+                    const isRead = n.read || readIds.includes(n.id)
+                    const Icon = notifIcon(n.type)
+                    return (
+                      <button
+                        key={n.id}
+                        className="relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors border-b border-slate-50 hover:bg-slate-50"
+                        style={{ background: isRead ? '#F8FAFC' : '#FFFFFF' }}
+                        onClick={() => markRead(n.id)}
+                      >
+                        {!isRead && (
+                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-blue-500" />
+                        )}
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 mt-0.5">
+                          <Icon className="h-3.5 w-3.5 text-slate-500" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-800 leading-tight">{n.title}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5 truncate">{n.body}</p>
+                        </div>
+                        <span className="shrink-0 text-[10px] text-slate-400 whitespace-nowrap mt-0.5">{n.time}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-slate-100 py-2.5 text-center">
+                  <button
+                    className="text-xs text-slate-500 hover:text-slate-800 transition-colors"
+                    onClick={() => { setNotifOpen(false); navigate('/workspace') }}
+                  >
+                    View all notifications
+                  </button>
+                </div>
+              </div>
+            </>
           )}
-        </button>
+        </div>
 
         {/* Divider */}
         <div className="h-5 w-px bg-slate-200 mx-0.5" aria-hidden />
@@ -223,7 +314,7 @@ export function TopBar({ alertCount = 0 }: TopBarProps) {
                   <div className="py-1">
                     <button
                       className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-                      onClick={() => { navigate('/settings'); setProfileOpen(false) }}
+                      onClick={() => { setSettingsOpen(true); setProfileOpen(false) }}
                     >
                       <Settings className="h-4 w-4 text-slate-400" />
                       Settings
@@ -244,5 +335,7 @@ export function TopBar({ alertCount = 0 }: TopBarProps) {
         )}
       </div>
     </header>
+    <ProfileSettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   )
 }

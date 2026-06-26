@@ -8,17 +8,17 @@ import { cn } from '@/shared/components/cn'
 import { usePermission } from '@/shared/hooks/usePermission'
 
 const NAV_ITEMS = [
-  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard, screen: 'dashboard',     group: 'overview' },
-  { to: '/workcenter',    label: 'Work Center',   icon: Cpu,             screen: 'workspace',     group: 'overview' },
-  { to: '/gst',           label: 'GST',           icon: FileText,        screen: 'gst',           group: 'compliance' },
-  { to: '/tds',           label: 'TDS',           icon: ReceiptText,     screen: 'tds',           group: 'compliance' },
-  { to: '/audit',         label: 'Audit',         icon: Scale,           screen: 'audit',         group: 'compliance' },
-  { to: '/clients',       label: 'Clients',       icon: Briefcase,       screen: 'clients',       group: 'management' },
-  { to: '/documents',     label: 'Documents',     icon: FolderOpen,      screen: 'documents',     group: 'management' },
-  { to: '/users',         label: 'Team',          icon: Users,           screen: 'users',         group: 'management' },
-  { to: '/communication', label: 'Communication', icon: MessageSquare,   screen: 'communication', group: 'tools' },
-  { to: '/reports',       label: 'Reports',       icon: BarChart3,       screen: 'reports',       group: 'tools' },
-  { to: '/settings',      label: 'Settings',      icon: Settings,        screen: 'subscription',  group: 'system' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, screen: 'dashboard', group: 'overview' },
+  { to: '/workcenter', label: 'Work Center', icon: Cpu, screen: 'workspace', group: 'overview' },
+  { to: '/gst', label: 'GST', icon: FileText, screen: 'gst', group: 'compliance' },
+  { to: '/tds', label: 'TDS', icon: ReceiptText, screen: 'tds', group: 'compliance' },
+  { to: '/audit', label: 'Audit', icon: Scale, screen: 'audit', group: 'compliance' },
+  { to: '/clients', label: 'Clients', icon: Briefcase, screen: 'clients', group: 'management' },
+  { to: '/documents', label: 'Documents', icon: FolderOpen, screen: 'documents', group: 'management' },
+  { to: '/users', label: 'User Management', icon: Users, screen: 'users', group: 'management' },
+  { to: '/communication', label: 'Communication', icon: MessageSquare, screen: 'communication', group: 'tools' },
+  { to: '/reports', label: 'Reports', icon: BarChart3, screen: 'reports', group: 'tools' },
+  { to: '/settings', label: 'Settings', icon: Settings, screen: 'subscription', group: 'system' },
 ]
 
 interface SidebarProps {

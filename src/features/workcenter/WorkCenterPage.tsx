@@ -10,7 +10,7 @@ import {
   Users, MessageSquare, AlertCircle, Paperclip, Activity,
   TrendingUp, BarChart2, ChevronDown, Star, Calendar,
   Layers, CalendarClock, Bell, FileUp, ArrowRight,
-  ChevronRight, Lock,
+  ChevronRight, Lock, LayoutGrid, List, PanelRightOpen, PanelRightClose,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -52,8 +52,9 @@ const PENDING_ACTIONS: PendingAction[] = [
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type WorkType = 'gst_filing' | 'tds_filing' | 'audit' | 'notice' | 'doc_request' | 'client_followup' | 'internal'
-type Priority  = 'critical' | 'high' | 'medium' | 'low'
-type QueueId   = 'todo' | 'in_progress' | 'in_review' | 'done'
+type Priority = 'critical' | 'high' | 'medium' | 'low'
+type QueueId = 'todo' | 'in_progress' | 'in_review' | 'done'
+type ViewMode = 'list' | 'folder'
 
 interface WorkItem {
   id: string
@@ -73,7 +74,6 @@ interface WorkItem {
   queue: QueueId
   tags: string[]
   description: string
-  // Type-specific
   gstin?: string
   return_period?: string
   ack_no?: string
@@ -89,26 +89,26 @@ interface WorkItem {
 // ─── Priority config ─────────────────────────────────────────────────────────
 const PRIORITY_CFG: Record<Priority, { label: string; color: string; bg: string; dot: string }> = {
   critical: { label: 'Critical', color: '#DC2626', bg: '#FEF2F2', dot: '#DC2626' },
-  high:     { label: 'High',     color: '#D97706', bg: '#FFFBEB', dot: '#F59E0B' },
-  medium:   { label: 'Medium',   color: '#2563EB', bg: '#EFF6FF', dot: '#3B82F6' },
-  low:      { label: 'Low',      color: '#64748B', bg: '#F1F5F9', dot: '#94A3B8' },
+  high: { label: 'High', color: '#D97706', bg: '#FFFBEB', dot: '#F59E0B' },
+  medium: { label: 'Medium', color: '#2563EB', bg: '#EFF6FF', dot: '#3B82F6' },
+  low: { label: 'Low', color: '#64748B', bg: '#F1F5F9', dot: '#94A3B8' },
 }
 
 const QUEUE_CFG: Record<QueueId, { label: string; icon: React.ElementType }> = {
-  todo:        { label: 'To Do',       icon: Circle       },
-  in_progress: { label: 'In Progress', icon: Clock3       },
-  in_review:   { label: 'In Review',   icon: ScanEye      },
-  done:        { label: 'Done',        icon: CheckCircle2 },
+  todo: { label: 'To Do', icon: Circle },
+  in_progress: { label: 'In Progress', icon: Clock3 },
+  in_review: { label: 'In Review', icon: ScanEye },
+  done: { label: 'Done', icon: CheckCircle2 },
 }
 
 const TYPE_CFG: Record<WorkType, { label: string; icon: React.ElementType; color: string; bg: string }> = {
-  gst_filing:      { label: 'GST Filing',      icon: FileText,     color: '#0584C7', bg: '#EFF8FF' },
-  tds_filing:      { label: 'TDS Filing',      icon: ReceiptText,  color: '#7C3AED', bg: '#F5F3FF' },
-  audit:           { label: 'Audit',           icon: Scale,        color: '#0D9488', bg: '#F0FDFA' },
-  notice:          { label: 'Notice',          icon: ShieldAlert,  color: '#DC2626', bg: '#FEF2F2' },
-  doc_request:     { label: 'Document Req.',   icon: FolderOpen,   color: '#D97706', bg: '#FFFBEB' },
-  client_followup: { label: 'Client Follow-up',icon: Users,        color: '#2563EB', bg: '#EFF6FF' },
-  internal:        { label: 'Internal Task',   icon: Layers,       color: '#64748B', bg: '#F1F5F9' },
+  gst_filing: { label: 'GST Filing', icon: FileText, color: '#0584C7', bg: '#EFF8FF' },
+  tds_filing: { label: 'TDS Filing', icon: ReceiptText, color: '#7C3AED', bg: '#F5F3FF' },
+  audit: { label: 'Audit', icon: Scale, color: '#0D9488', bg: '#F0FDFA' },
+  notice: { label: 'Notice', icon: ShieldAlert, color: '#DC2626', bg: '#FEF2F2' },
+  doc_request: { label: 'Document Req.', icon: FolderOpen, color: '#D97706', bg: '#FFFBEB' },
+  client_followup: { label: 'Client Follow-up', icon: Users, color: '#2563EB', bg: '#EFF6FF' },
+  internal: { label: 'Internal Task', icon: Layers, color: '#64748B', bg: '#F1F5F9' },
 }
 
 // ─── Mock work items ─────────────────────────────────────────────────────────
@@ -239,10 +239,7 @@ const RAW_ITEMS: WorkItem[] = [
   },
 ]
 
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Used in drawer + OpsPanel — colored urgency badge */
 function DaysBadge({ days }: { days: number }) {
   if (days < 0) return (
     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
@@ -264,7 +261,6 @@ function DaysBadge({ days }: { days: number }) {
   )
 }
 
-/** Used on cards — minimal "Due Jun 26" text, red Overdue badge only when past due */
 function DueLabel({ dueDate, daysRemaining }: { dueDate: string; daysRemaining: number }) {
   if (daysRemaining < 0) return (
     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
@@ -345,23 +341,15 @@ function WorkCard({ item, onClick, assignedBy }: { item: WorkItem; onClick: () =
         el.style.borderLeft = borderLeft
       }}
     >
-      {/* Top row: type chip + due label */}
       <div className="flex items-center justify-between mb-2">
         <TypeChip type={item.type} />
         <DueLabel dueDate={item.due_date} daysRemaining={item.days_remaining} />
       </div>
-
-      {/* Title */}
       <p className="text-xs font-semibold leading-tight mb-1" style={{ color: '#0F172A' }}>{item.title}</p>
-
-      {/* Client */}
       <p className="text-[10px] mb-1" style={{ color: '#475569' }}>{item.client}</p>
-
       {assignedBy && (
         <p className="text-[9px] mb-2" style={{ color: G.icon }}>Assigned by {assignedBy}</p>
       )}
-
-      {/* Progress */}
       <div className="mb-2.5">
         <div className="flex justify-between items-center mb-1">
           <span className="text-[9px]" style={{ color: G.icon }}>Progress</span>
@@ -369,8 +357,6 @@ function WorkCard({ item, onClick, assignedBy }: { item: WorkItem; onClick: () =
         </div>
         <ProgressBar pct={item.progress} />
       </div>
-
-      {/* Footer: assignee + query/doc pills */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Avatar name={item.assigned_to} size="xs" />
@@ -395,6 +381,172 @@ function WorkCard({ item, onClick, assignedBy }: { item: WorkItem; onClick: () =
   )
 }
 
+// ─── List View Row ─────────────────────────────────────────────────────────────
+function WorkRow({ item, onClick, showAssignedBy }: { item: WorkItem; onClick: () => void; showAssignedBy?: boolean }) {
+  const cfg = QUEUE_CFG[item.queue]
+  const QIcon = cfg.icon
+  const p = PRIORITY_CFG[item.priority]
+
+  return (
+    <tr
+      onClick={onClick}
+      className="cursor-pointer transition-colors"
+      style={{ borderBottom: `1px solid ${G.border}` }}
+      onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = G.canvas)}
+      onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+    >
+      {/* Title + Client */}
+      <td className="px-3 py-2.5" style={{ maxWidth: 280 }}>
+        <div className="flex items-center gap-2">
+          <PriorityDot priority={item.priority} />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold truncate" title={item.title}
+              style={{ color: G.primary, maxWidth: 230 }}>{item.title}</p>
+            <p className="text-[10px] truncate" title={item.client}
+              style={{ color: G.secondary, maxWidth: 230 }}>{item.client}</p>
+          </div>
+        </div>
+      </td>
+
+      {/* Type */}
+      <td className="px-3 py-2.5"><TypeChip type={item.type} /></td>
+
+      {/* Priority */}
+      <td className="px-3 py-2.5">
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+          style={{ background: p.bg, color: p.color }}>{p.label}</span>
+      </td>
+
+      {/* Status */}
+      <td className="px-3 py-2.5">
+        <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+          style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+          <QIcon className="h-2.5 w-2.5" />{cfg.label}
+        </span>
+      </td>
+
+      {/* Assigned To */}
+      <td className="px-3 py-2.5 hidden md:table-cell" style={{ maxWidth: 130 }}>
+        <div className="flex items-center gap-1.5">
+          <Avatar name={item.assigned_to} size="xs" />
+          <span className="text-xs truncate" title={item.assigned_to}
+            style={{ color: G.secondary, maxWidth: 100 }}>{item.assigned_to}</span>
+        </div>
+      </td>
+
+      {/* Assigned By (admin only) */}
+      {showAssignedBy && (
+        <td className="px-3 py-2.5 hidden lg:table-cell" style={{ maxWidth: 110 }}>
+          <span className="text-xs truncate block" title={item.assigned_by}
+            style={{ color: G.secondary, maxWidth: 100 }}>{item.assigned_by}</span>
+        </td>
+      )}
+
+      {/* Due */}
+      <td className="px-3 py-2.5">
+        <DueLabel dueDate={item.due_date} daysRemaining={item.days_remaining} />
+      </td>
+
+      {/* Progress */}
+      <td className="px-3 py-2.5 hidden lg:table-cell" style={{ width: 110 }}>
+        <div className="flex items-center gap-1.5">
+          <div className="flex-1 h-1 rounded-full" style={{ background: G.border }}>
+            <div className="h-1 rounded-full transition-all"
+              style={{
+                width: `${item.progress}%`,
+                background: item.progress === 100 ? '#16A34A' : item.progress >= 70 ? '#0584C7' : item.progress >= 40 ? '#D97706' : '#94A3B8',
+              }} />
+          </div>
+          <span className="text-[9px] shrink-0 tabular-nums" style={{ color: G.icon }}>{item.progress}%</span>
+        </div>
+      </td>
+
+      {/* Queries/Docs */}
+      <td className="px-3 py-2.5 hidden xl:table-cell">
+        <div className="flex items-center gap-1.5">
+          {item.open_queries > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+              <MessageSquare className="h-2.5 w-2.5" />{item.open_queries}
+            </span>
+          )}
+          {item.pending_docs > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+              <FolderOpen className="h-2.5 w-2.5" />{item.pending_docs}
+            </span>
+          )}
+          {item.open_queries === 0 && item.pending_docs === 0 && (
+            <span className="text-[10px]" style={{ color: G.icon }}>—</span>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// ─── List View Table ───────────────────────────────────────────────────────────
+function WorkListView({ items, onItemClick, showAssignedBy }: {
+  items: WorkItem[]; onItemClick: (i: WorkItem) => void; showAssignedBy?: boolean
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-2 rounded-2xl"
+        style={{ background: G.white, border: `1px solid ${G.border}` }}>
+        <CheckCircle2 className="h-8 w-8" style={{ color: G.icon, opacity: 0.5 }} />
+        <p className="text-sm" style={{ color: G.icon }}>No work items match the current filters</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl overflow-hidden"
+      style={{ background: G.white, border: `1px solid ${G.border}`, boxShadow: '0 1px 3px rgba(15,23,42,0.06)' }}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '11%' }} />
+            <col className="hidden md:table-column" style={{ width: '12%' }} />
+            {showAssignedBy && <col className="hidden lg:table-column" style={{ width: '10%' }} />}
+            <col style={{ width: '8%' }} />
+            <col className="hidden lg:table-column" style={{ width: '10%' }} />
+            <col className="hidden xl:table-column" style={{ width: '7%' }} />
+          </colgroup>
+          <thead>
+            <tr style={{ background: G.canvas }}>
+              {[
+                { label: 'Work Item', className: '' },
+                { label: 'Type', className: '' },
+                { label: 'Priority', className: '' },
+                { label: 'Status', className: '' },
+                { label: 'Assigned To', className: 'hidden md:table-cell' },
+                ...(showAssignedBy ? [{ label: 'Assigned By', className: 'hidden lg:table-cell' }] : []),
+                { label: 'Due', className: '' },
+                { label: 'Progress', className: 'hidden lg:table-cell' },
+                { label: 'Q / D', className: 'hidden xl:table-cell' },
+              ].map((h, i) => (
+                <th key={i}
+                  className={`text-left px-3 py-2.5 text-[9px] font-semibold uppercase tracking-wider border-b whitespace-nowrap ${h.className}`}
+                  style={{ color: G.secondary, borderColor: G.border }}>
+                  {h.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(item => (
+              <WorkRow key={item.id} item={item} onClick={() => onItemClick(item)} showAssignedBy={showAssignedBy} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ─── Board Column ─────────────────────────────────────────────────────────────
 function BoardColumn({ queueId, items, onCardClick, showAssignedBy }: {
   queueId: QueueId; items: WorkItem[]; onCardClick: (item: WorkItem) => void; showAssignedBy?: boolean
@@ -412,7 +564,6 @@ function BoardColumn({ queueId, items, onCardClick, showAssignedBy }: {
         borderRadius: 14,
       }}
     >
-      {/* Column header */}
       <div
         className="px-3 py-2.5 flex items-center justify-between"
         style={{
@@ -437,14 +588,12 @@ function BoardColumn({ queueId, items, onCardClick, showAssignedBy }: {
           style={{ color: G.icon, padding: '2px 4px' }}
           onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = G.primary}
           onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = G.icon}
-          onClick={() => {}}
+          onClick={() => { }}
           title={`Add to ${cfg.label}`}
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
-
-      {/* Cards */}
       <div
         className="flex flex-col gap-2 p-2 overflow-y-auto flex-1"
         style={{ maxHeight: 'calc(100vh - 280px)' }}
@@ -463,9 +612,8 @@ function BoardColumn({ queueId, items, onCardClick, showAssignedBy }: {
   )
 }
 
-// ─── Detail Drawer ─────────────────────────────────────────────────────────────
+// ─── Detail Drawer (unchanged) ────────────────────────────────────────────────
 type DrawerTab = 'overview' | 'documents' | 'queries' | 'comments'
-
 const QUEUE_ORDER: QueueId[] = ['todo', 'in_progress', 'in_review', 'done']
 const QUEUE_LABELS: Record<QueueId, string> = {
   todo: 'To Do', in_progress: 'In Progress', in_review: 'In Review', done: 'Done',
@@ -478,9 +626,9 @@ function DetailDrawer({
   onAction: (type: PendingAction['type'], meta: { note?: string; newDate?: string }) => void
 }) {
   const navigate = useNavigate()
-  const [tab, setTab]             = useState<DrawerTab>('overview')
+  const [tab, setTab] = useState<DrawerTab>('overview')
   const [newComment, setNewComment] = useState('')
-  const [newQuery, setNewQuery]   = useState('')
+  const [newQuery, setNewQuery] = useState('')
   const [extendDate, setExtendDate] = useState('')
   const [showExtend, setShowExtend] = useState(false)
   const [reminderDate, setReminderDate] = useState('')
@@ -488,11 +636,10 @@ function DetailDrawer({
   const [showReminder, setShowReminder] = useState(false)
   const [currentQueue, setCurrentQueue] = useState<QueueId>(item.queue)
 
-  const p    = PRIORITY_CFG[item.priority]
-  const tc   = TYPE_CFG[item.type]
+  const p = PRIORITY_CFG[item.priority]
+  const tc = TYPE_CFG[item.type]
   const TIcon = tc.icon
 
-  // Role-based: article can move to in_progress / in_review; only admin can mark done
   const canMoveTo = (target: QueueId): boolean => {
     if (target === currentQueue) return false
     if (target === 'done') return isAdmin
@@ -505,20 +652,18 @@ function DetailDrawer({
   function moveStatus(target: QueueId) {
     setCurrentQueue(target)
     toast.success(`Moved to "${QUEUE_LABELS[target]}"`)
-    if (target === 'in_review') {
-      onAction('in_review', {})
-    }
+    if (target === 'in_review') onAction('in_review', {})
   }
 
   const mockDocs = [
     { name: 'Bank Statement Apr 2026', status: item.pending_docs > 0 ? 'Pending' : 'Uploaded', required: true },
-    { name: 'Purchase Invoices',       status: item.pending_docs > 1 ? 'Pending' : 'Uploaded', required: true },
-    { name: 'Sales Invoices',          status: 'Uploaded', required: true },
-    { name: 'Challans / Payment Proof',status: item.type === 'tds_filing' && item.pending_docs > 0 ? 'Pending' : 'Uploaded', required: false },
+    { name: 'Purchase Invoices', status: item.pending_docs > 1 ? 'Pending' : 'Uploaded', required: true },
+    { name: 'Sales Invoices', status: 'Uploaded', required: true },
+    { name: 'Challans / Payment Proof', status: item.type === 'tds_filing' && item.pending_docs > 0 ? 'Pending' : 'Uploaded', required: false },
   ]
   const mockComments = [
-    { author: 'Rohan V.',       time: '2 hours ago', text: 'Documents received from client. Starting data entry now.' },
-    { author: item.assigned_to, time: '1 day ago',   text: 'Sent reminder email to client for pending documents.' },
+    { author: 'Rohan V.', time: '2 hours ago', text: 'Documents received from client. Starting data entry now.' },
+    { author: item.assigned_to, time: '1 day ago', text: 'Sent reminder email to client for pending documents.' },
   ]
   const mockQueries = [
     { id: 1, by: item.assigned_to, text: 'Challan details not provided. Should we proceed with available data?', status: 'open', time: '5 hours ago' },
@@ -526,14 +671,10 @@ function DetailDrawer({
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Drawer */}
       <div className="fixed right-0 top-0 bottom-0 z-50 flex flex-col"
         style={{ width: 540, background: G.white, borderLeft: `1px solid ${G.border}`, boxShadow: '-8px 0 32px rgba(15,23,42,0.12)' }}>
 
-        {/* Header */}
         <div className="flex items-start gap-3 px-5 py-4" style={{ borderBottom: `1px solid ${G.border}` }}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: tc.bg }}>
             <TIcon className="h-4 w-4" style={{ color: tc.color }} />
@@ -548,19 +689,16 @@ function DetailDrawer({
             <p className="text-xs mt-0.5" style={{ color: G.secondary }}>{item.client}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg transition-colors"
-            style={{ background: G.canvas }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.border}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = G.canvas}>
+            style={{ background: G.canvas }}>
             <X className="h-4 w-4" style={{ color: G.secondary }} />
           </button>
         </div>
 
-        {/* Status pipeline strip */}
         <div className="px-5 py-3 flex items-center gap-2 flex-wrap" style={{ background: G.canvas, borderBottom: `1px solid ${G.border}` }}>
           {QUEUE_ORDER.map((q, i) => {
             const isCurrent = q === currentQueue
-            const isDone    = q === 'done'
-            const locked    = isDone && !isAdmin
+            const isDone = q === 'done'
+            const locked = isDone && !isAdmin
             return (
               <div key={q} className="flex items-center gap-2">
                 {i > 0 && <ChevronRight className="h-3 w-3 shrink-0" style={{ color: G.icon }} />}
@@ -585,7 +723,6 @@ function DetailDrawer({
           <DaysBadge days={item.days_remaining} />
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 px-5 py-2" style={{ borderBottom: `1px solid ${G.border}` }}>
           {(['overview', 'documents', 'queries', 'comments'] as DrawerTab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
@@ -600,23 +737,18 @@ function DetailDrawer({
           ))}
         </div>
 
-        {/* Tab content */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-
-          {/* ── Overview ─────────────────────────────────── */}
           {tab === 'overview' && (
             <div className="space-y-4">
               <p className="text-sm" style={{ color: G.secondary }}>{item.description}</p>
-
-              {/* Key metrics */}
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: 'Progress',      value: `${item.progress}%` },
-                  { label: 'Assigned To',   value: item.assigned_to },
-                  { label: 'Due Date',      value: item.due_date },
-                  { label: 'Priority Score',value: item.score },
-                  { label: 'Open Queries',  value: item.open_queries },
-                  { label: 'Pending Docs',  value: item.pending_docs },
+                  { label: 'Progress', value: `${item.progress}%` },
+                  { label: 'Assigned To', value: item.assigned_to },
+                  { label: 'Due Date', value: item.due_date },
+                  { label: 'Priority Score', value: item.score },
+                  { label: 'Open Queries', value: item.open_queries },
+                  { label: 'Pending Docs', value: item.pending_docs },
                 ].map(m => (
                   <div key={m.label} className="rounded-xl p-3" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                     <p className="text-[9px] font-semibold mb-1" style={{ color: G.icon }}>{m.label}</p>
@@ -624,8 +756,6 @@ function DetailDrawer({
                   </div>
                 ))}
               </div>
-
-              {/* Assigned By */}
               <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                 <div className="h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ background: '#0F172A' }}>
                   {item.assigned_by.split(' ').map(n => n[0]).join('').slice(0, 2)}
@@ -636,19 +766,13 @@ function DetailDrawer({
                   <p className="text-[9px]" style={{ color: G.secondary }}>CA Admin · admin@auditlens.demo</p>
                 </div>
               </div>
-
-              {/* ── Quick Actions ──────────────────────────── */}
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: G.icon }}>Quick Actions</p>
                 <div className="space-y-2">
-
-                  {/* Extend Deadline */}
                   <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${G.border}` }}>
                     <button onClick={() => setShowExtend(v => !v)}
                       className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left"
-                      style={{ background: G.white }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.canvas}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = G.white}>
+                      style={{ background: G.white }}>
                       <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                         <CalendarClock className="h-3.5 w-3.5" style={{ color: G.secondary }} />
@@ -672,14 +796,10 @@ function DetailDrawer({
                       </div>
                     )}
                   </div>
-
-                  {/* Set Reminder */}
                   <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${G.border}` }}>
                     <button onClick={() => setShowReminder(v => !v)}
                       className="w-full flex items-center gap-3 px-4 py-3 transition-colors text-left"
-                      style={{ background: G.white }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.canvas}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = G.white}>
+                      style={{ background: G.white }}>
                       <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                         <Bell className="h-3.5 w-3.5" style={{ color: G.secondary }} />
@@ -707,14 +827,10 @@ function DetailDrawer({
                       </div>
                     )}
                   </div>
-
-                  {/* Request Documents via Communication */}
                   <button
                     onClick={() => { onAction('doc_request', {}); toast.info('Opening Communication tab…'); setTimeout(() => navigate('/communication'), 600); onClose() }}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left"
-                    style={{ background: G.white, border: `1px solid ${G.border}` }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.canvas}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = G.white}>
+                    style={{ background: G.white, border: `1px solid ${G.border}` }}>
                     <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
                       style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                       <FileUp className="h-3.5 w-3.5" style={{ color: G.secondary }} />
@@ -725,14 +841,10 @@ function DetailDrawer({
                     </div>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0" style={{ color: G.icon }} />
                   </button>
-
-                  {/* Move to next status (quick shortcut) */}
                   {nextQueue && canMoveTo(nextQueue) && (
                     <button onClick={() => moveStatus(nextQueue)}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left"
-                      style={{ background: G.white, border: `1px solid ${G.border}` }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.canvas}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = G.white}>
+                      style={{ background: G.white, border: `1px solid ${G.border}` }}>
                       <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0"
                         style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                         <CheckCircle2 className="h-3.5 w-3.5" style={{ color: G.secondary }} />
@@ -755,8 +867,6 @@ function DetailDrawer({
                   )}
                 </div>
               </div>
-
-              {/* Type-specific detail panels */}
               {item.gstin && (
                 <div className="rounded-xl p-3 space-y-2" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
                   <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: G.secondary }}>GST Details</p>
@@ -790,8 +900,6 @@ function DetailDrawer({
                   ))}
                 </div>
               )}
-
-              {/* Tags */}
               {item.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {item.tags.map(t => (
@@ -803,7 +911,6 @@ function DetailDrawer({
             </div>
           )}
 
-          {/* Documents */}
           {tab === 'documents' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between mb-1">
@@ -828,7 +935,6 @@ function DetailDrawer({
             </div>
           )}
 
-          {/* Queries */}
           {tab === 'queries' && (
             <div className="space-y-3">
               {mockQueries.map(q => (
@@ -861,7 +967,6 @@ function DetailDrawer({
             </div>
           )}
 
-          {/* Comments */}
           {tab === 'comments' && (
             <div className="space-y-3">
               {mockComments.map((c, i) => (
@@ -897,33 +1002,33 @@ function DetailDrawer({
 
 // ─── Mock reference data ──────────────────────────────────────────────────────
 const MOCK_CLIENTS = [
-  { id: 'c1', name: 'Sunrise Textiles',     gstins: ['27AABCS1429B1ZB', '27AABCS1429B1ZC'], tan: 'MUMS12345A' },
-  { id: 'c2', name: 'BlueSky Software',     gstins: ['29AADCB2230M1ZV'],                    tan: 'BLRS67890B' },
-  { id: 'c3', name: 'Redwood Constructions', gstins: ['07AAECR1234F1ZQ'],                   tan: 'DELS11223C' },
-  { id: 'c4', name: 'Apex Auto Parts',      gstins: ['08AAAPA1234A1ZT'],                    tan: 'JAIS44556D' },
-  { id: 'c5', name: 'Green Pharma',         gstins: ['24AABCG9988P1Z3'],                    tan: 'AHMS77889E' },
+  { id: 'c1', name: 'Sunrise Textiles', gstins: ['27AABCS1429B1ZB', '27AABCS1429B1ZC'], tan: 'MUMS12345A' },
+  { id: 'c2', name: 'BlueSky Software', gstins: ['29AADCB2230M1ZV'], tan: 'BLRS67890B' },
+  { id: 'c3', name: 'Redwood Constructions', gstins: ['07AAECR1234F1ZQ'], tan: 'DELS11223C' },
+  { id: 'c4', name: 'Apex Auto Parts', gstins: ['08AAAPA1234A1ZT'], tan: 'JAIS44556D' },
+  { id: 'c5', name: 'Green Pharma', gstins: ['24AABCG9988P1Z3'], tan: 'AHMS77889E' },
 ]
 const MOCK_TEAM = [
   { id: 'u1', name: 'Rohan Verma', role: 'Article' },
-  { id: 'u2', name: 'Sneha Iyer',  role: 'Article' },
+  { id: 'u2', name: 'Sneha Iyer', role: 'Article' },
 ]
-const GST_RETURN_TYPES  = ['GSTR-1', 'GSTR-1A', 'GSTR-3B', 'GSTR-9', 'GSTR-9C']
-const TDS_RETURN_TYPES  = ['138-TDS (24Q)', '140-TDS (26Q)', '144-TDS (27Q)', '143-TDS (27EQ)']
-const AUDIT_TYPES       = ['Statutory Audit', 'Tax Audit', 'Internal Audit', 'GST Audit']
-const NOTICE_TYPES      = ['GST SCN', 'IT Scrutiny', 'Assessment Notice', 'Demand Notice']
-const FY_OPTIONS        = ['2025-26', '2024-25', '2023-24']
-const MONTHS            = ['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March']
-const QUARTERS          = ['Q1 (Apr–Jun)', 'Q2 (Jul–Sep)', 'Q3 (Oct–Dec)', 'Q4 (Jan–Mar)']
+const GST_RETURN_TYPES = ['GSTR-1', 'GSTR-1A', 'GSTR-3B', 'GSTR-9', 'GSTR-9C']
+const TDS_RETURN_TYPES = ['138-TDS (24Q)', '140-TDS (26Q)', '144-TDS (27Q)', '143-TDS (27EQ)']
+const AUDIT_TYPES = ['Statutory Audit', 'Tax Audit', 'Internal Audit', 'GST Audit']
+const NOTICE_TYPES = ['GST SCN', 'IT Scrutiny', 'Assessment Notice', 'Demand Notice']
+const FY_OPTIONS = ['2025-26', '2024-25', '2023-24']
+const MONTHS = ['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March']
+const QUARTERS = ['Q1 (Apr–Jun)', 'Q2 (Jul–Sep)', 'Q3 (Oct–Dec)', 'Q4 (Jan–Mar)']
 
-// ─── Create Work Item Modal ────────────────────────────────────────────────────
+// ─── Create Work Item Modal (unchanged) ────────────────────────────────────────
 const WORK_CATEGORIES = [
-  { id: 'gst_filing',      label: 'GST Filing',         icon: FileText,     color: '#0584C7', desc: 'GSTR-1, GSTR-3B, GSTR-9, GSTR-9C' },
-  { id: 'tds_filing',      label: 'TDS Filing',         icon: ReceiptText,  color: '#7C3AED', desc: '138-TDS, 140-TDS, 144-TDS, 143-TDS' },
-  { id: 'audit',           label: 'Audit Engagement',   icon: Scale,        color: '#0D9488', desc: 'Statutory Audit, Tax Audit, Internal Audit' },
-  { id: 'notice',          label: 'Government Notice',  icon: ShieldAlert,  color: '#DC2626', desc: 'GST SCN, IT Notice, Assessment' },
-  { id: 'doc_request',     label: 'Document Request',   icon: FolderOpen,   color: '#D97706', desc: 'Collect documents from client' },
-  { id: 'client_followup', label: 'Client Follow-up',   icon: Users,        color: '#2563EB', desc: 'Pending responses, clarifications' },
-  { id: 'internal',        label: 'Internal Task',      icon: Layers,       color: '#64748B', desc: 'Admin, team, or internal work' },
+  { id: 'gst_filing', label: 'GST Filing', icon: FileText, color: '#0584C7', desc: 'GSTR-1, GSTR-3B, GSTR-9, GSTR-9C' },
+  { id: 'tds_filing', label: 'TDS Filing', icon: ReceiptText, color: '#7C3AED', desc: '138-TDS, 140-TDS, 144-TDS, 143-TDS' },
+  { id: 'audit', label: 'Audit Engagement', icon: Scale, color: '#0D9488', desc: 'Statutory Audit, Tax Audit, Internal Audit' },
+  { id: 'notice', label: 'Government Notice', icon: ShieldAlert, color: '#DC2626', desc: 'GST SCN, IT Notice, Assessment' },
+  { id: 'doc_request', label: 'Document Request', icon: FolderOpen, color: '#D97706', desc: 'Collect documents from client' },
+  { id: 'client_followup', label: 'Client Follow-up', icon: Users, color: '#2563EB', desc: 'Pending responses, clarifications' },
+  { id: 'internal', label: 'Internal Task', icon: Layers, color: '#64748B', desc: 'Admin, team, or internal work' },
 ]
 
 function CreateModal({ onClose, onSubmit }: {
@@ -932,31 +1037,21 @@ function CreateModal({ onClose, onSubmit }: {
 }) {
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedCat, setSelectedCat] = useState<WorkType | ''>('')
-
-  // Common fields
-  const [client, setClient]     = useState('')
+  const [client, setClient] = useState('')
   const [assignTo, setAssignTo] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
-  const [dueDate, setDueDate]   = useState('')
-  const [fy, setFy]             = useState(FY_OPTIONS[0])
+  const [dueDate, setDueDate] = useState('')
+  const [fy, setFy] = useState(FY_OPTIONS[0])
   const [description, setDescription] = useState('')
-
-  // GST-specific
-  const [gstin, setGstin]               = useState('')
+  const [gstin, setGstin] = useState('')
   const [gstReturnType, setGstReturnType] = useState('')
-  const [month, setMonth]               = useState('')
-
-  // TDS-specific
+  const [month, setMonth] = useState('')
   const [tdsReturnType, setTdsReturnType] = useState('')
-  const [quarter, setQuarter]           = useState('')
-
-  // Audit-specific
+  const [quarter, setQuarter] = useState('')
   const [auditType, setAuditType] = useState('')
-
-  // Notice-specific
-  const [noticeNo, setNoticeNo]       = useState('')
-  const [authority, setAuthority]     = useState('')
-  const [noticeType, setNoticeType]   = useState('')
+  const [noticeNo, setNoticeNo] = useState('')
+  const [authority, setAuthority] = useState('')
+  const [noticeType, setNoticeType] = useState('')
   const [responseDue, setResponseDue] = useState('')
 
   const selectedClient = MOCK_CLIENTS.find(c => c.name === client)
@@ -974,23 +1069,17 @@ function CreateModal({ onClose, onSubmit }: {
       queue: 'todo',
       description,
       tags: [],
-      ...(selectedCat === 'gst_filing'  && { gstin, form_type: gstReturnType, return_period: month }),
-      ...(selectedCat === 'tds_filing'  && { form_type: tdsReturnType, quarter }),
-      ...(selectedCat === 'audit'       && { audit_type: auditType }),
-      ...(selectedCat === 'notice'      && { notice_no: noticeNo, authority, severity: noticeType }),
+      ...(selectedCat === 'gst_filing' && { gstin, form_type: gstReturnType, return_period: month }),
+      ...(selectedCat === 'tds_filing' && { form_type: tdsReturnType, quarter }),
+      ...(selectedCat === 'audit' && { audit_type: auditType }),
+      ...(selectedCat === 'notice' && { notice_no: noticeNo, authority, severity: noticeType }),
     }
     onSubmit(partial)
   }
 
   const inputBase: React.CSSProperties = {
-    background: G.canvas,
-    border: `1px solid ${G.border}`,
-    color: G.primary,
-    borderRadius: 10,
-    padding: '8px 12px',
-    width: '100%',
-    fontSize: 12,
-    outline: 'none',
+    background: G.canvas, border: `1px solid ${G.border}`, color: G.primary,
+    borderRadius: 10, padding: '8px 12px', width: '100%', fontSize: 12, outline: 'none',
   }
   const labelCls = 'block text-[10px] font-semibold uppercase tracking-wider mb-1'
 
@@ -998,34 +1087,19 @@ function CreateModal({ onClose, onSubmit }: {
     <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full flex flex-col"
         style={{ maxWidth: 560, maxHeight: '85vh', background: G.white, border: `1px solid ${G.border}`, borderRadius: 16 }}>
-
-        {/* Header */}
         <div className="px-5 py-4 flex items-center justify-between flex-shrink-0"
           style={{ borderBottom: `1px solid ${G.border}` }}>
           <div>
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="text-[10px] font-semibold" style={{ color: G.icon }}>
-                Step {step} of 2 — {step === 1 ? 'Select Category' : 'Fill Details'}
-              </span>
-            </div>
-            {step === 2 && (
-              <div className="flex items-center gap-1 mb-0.5">
-                <span className="text-[10px]" style={{ color: G.icon }}>Category</span>
-                <ChevronRight className="h-3 w-3" style={{ color: G.icon }} />
-                <span className="text-[10px] font-semibold" style={{ color: G.primary }}>Details</span>
-              </div>
-            )}
-            <h2 className="text-sm font-bold" style={{ color: G.primary }}>Create Work Item</h2>
+            <span className="text-[10px] font-semibold" style={{ color: G.icon }}>
+              Step {step} of 2 — {step === 1 ? 'Select Category' : 'Fill Details'}
+            </span>
+            <h2 className="text-sm font-bold mt-0.5" style={{ color: G.primary }}>Create Work Item</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ background: G.canvas }}>
             <X className="h-4 w-4" style={{ color: G.secondary }} />
           </button>
         </div>
-
-        {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 p-4">
-
-          {/* ── Step 1: Category grid ── */}
           {step === 1 && (
             <div className="grid grid-cols-2 gap-2">
               {WORK_CATEGORIES.map(cat => {
@@ -1051,268 +1125,138 @@ function CreateModal({ onClose, onSubmit }: {
               })}
             </div>
           )}
-
-          {/* ── Step 2: Detail form ── */}
           {step === 2 && (
             <div className="space-y-3">
-
-              {/* Client */}
               <div>
                 <label className={labelCls} style={{ color: G.icon }}>Client *</label>
-                <div className="relative">
-                  <select value={client}
-                    onChange={e => { setClient(e.target.value); setGstin('') }}
-                    className="appearance-none"
-                    style={inputBase}>
-                    <option value="">Select client…</option>
-                    {MOCK_CLIENTS.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                </div>
+                <select value={client} onChange={e => { setClient(e.target.value); setGstin('') }}
+                  className="appearance-none" style={inputBase}>
+                  <option value="">Select client…</option>
+                  {MOCK_CLIENTS.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                </select>
               </div>
-
-              {/* Assign To */}
               <div>
                 <label className={labelCls} style={{ color: G.icon }}>Assign To *</label>
-                <div className="relative">
-                  <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
-                    className="appearance-none"
-                    style={inputBase}>
-                    <option value="">Select team member…</option>
-                    {MOCK_TEAM.map(u => <option key={u.id} value={u.name}>{u.name} ({u.role})</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                </div>
+                <select value={assignTo} onChange={e => setAssignTo(e.target.value)}
+                  className="appearance-none" style={inputBase}>
+                  <option value="">Select team member…</option>
+                  {MOCK_TEAM.map(u => <option key={u.id} value={u.name}>{u.name} ({u.role})</option>)}
+                </select>
               </div>
-
-              {/* Priority + Due Date */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls} style={{ color: G.icon }}>Priority</label>
-                  <div className="relative">
-                    <select value={priority} onChange={e => setPriority(e.target.value as Priority)}
-                      className="appearance-none"
-                      style={inputBase}>
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                  </div>
+                  <select value={priority} onChange={e => setPriority(e.target.value as Priority)}
+                    className="appearance-none" style={inputBase}>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
                 </div>
                 <div>
                   <label className={labelCls} style={{ color: G.icon }}>Due Date *</label>
-                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-                    style={inputBase} />
+                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={inputBase} />
                 </div>
               </div>
-
-              {/* Financial Year + second column (GSTIN or Quarter) */}
-              {selectedCat === 'gst_filing' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls} style={{ color: G.icon }}>Financial Year</label>
-                    <div className="relative">
-                      <select value={fy} onChange={e => setFy(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        {FY_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls} style={{ color: G.icon }}>GSTIN</label>
-                    <div className="relative">
-                      <select value={gstin} onChange={e => setGstin(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        <option value="">Select GSTIN…</option>
-                        {(selectedClient?.gstins ?? []).map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedCat === 'tds_filing' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls} style={{ color: G.icon }}>Financial Year</label>
-                    <div className="relative">
-                      <select value={fy} onChange={e => setFy(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        {FY_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls} style={{ color: G.icon }}>Quarter</label>
-                    <div className="relative">
-                      <select value={quarter} onChange={e => setQuarter(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        <option value="">Select quarter…</option>
-                        {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedCat !== 'gst_filing' && selectedCat !== 'tds_filing' && (
-                <div>
-                  <label className={labelCls} style={{ color: G.icon }}>Financial Year</label>
-                  <div className="relative">
-                    <select value={fy} onChange={e => setFy(e.target.value)}
-                      className="appearance-none" style={inputBase}>
-                      {FY_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                  </div>
-                </div>
-              )}
-
-              {/* GST Filing extra */}
               {selectedCat === 'gst_filing' && (
                 <>
                   <div>
+                    <label className={labelCls} style={{ color: G.icon }}>GSTIN</label>
+                    <select value={gstin} onChange={e => setGstin(e.target.value)} className="appearance-none" style={inputBase}>
+                      <option value="">Select GSTIN…</option>
+                      {(selectedClient?.gstins ?? []).map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div>
                     <label className={labelCls} style={{ color: G.icon }}>Return Type</label>
-                    <div className="relative">
-                      <select value={gstReturnType} onChange={e => setGstReturnType(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        <option value="">Select return type…</option>
-                        {GST_RETURN_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
+                    <select value={gstReturnType} onChange={e => setGstReturnType(e.target.value)} className="appearance-none" style={inputBase}>
+                      <option value="">Select return type…</option>
+                      {GST_RETURN_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className={labelCls} style={{ color: G.icon }}>Month</label>
-                    <div className="relative">
-                      <select value={month} onChange={e => setMonth(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        <option value="">Select month…</option>
-                        {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
+                    <select value={month} onChange={e => setMonth(e.target.value)} className="appearance-none" style={inputBase}>
+                      <option value="">Select month…</option>
+                      {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
                   </div>
                 </>
               )}
-
-              {/* TDS Filing extra */}
               {selectedCat === 'tds_filing' && (
                 <>
                   <div>
                     <label className={labelCls} style={{ color: G.icon }}>TAN (Auto-filled)</label>
-                    <input value={tan} disabled
-                      style={{ ...inputBase, opacity: 0.6, cursor: 'not-allowed' }} />
+                    <input value={tan} disabled style={{ ...inputBase, opacity: 0.6 }} />
                   </div>
                   <div>
                     <label className={labelCls} style={{ color: G.icon }}>Return Type</label>
-                    <div className="relative">
-                      <select value={tdsReturnType} onChange={e => setTdsReturnType(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        <option value="">Select return type…</option>
-                        {TDS_RETURN_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
+                    <select value={tdsReturnType} onChange={e => setTdsReturnType(e.target.value)} className="appearance-none" style={inputBase}>
+                      <option value="">Select…</option>
+                      {TDS_RETURN_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls} style={{ color: G.icon }}>Quarter</label>
+                    <select value={quarter} onChange={e => setQuarter(e.target.value)} className="appearance-none" style={inputBase}>
+                      <option value="">Select…</option>
+                      {QUARTERS.map(q => <option key={q} value={q}>{q}</option>)}
+                    </select>
                   </div>
                 </>
               )}
-
-              {/* Audit extra */}
               {selectedCat === 'audit' && (
                 <div>
                   <label className={labelCls} style={{ color: G.icon }}>Audit Type</label>
-                  <div className="relative">
-                    <select value={auditType} onChange={e => setAuditType(e.target.value)}
-                      className="appearance-none" style={inputBase}>
-                      <option value="">Select audit type…</option>
-                      {AUDIT_TYPES.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                  </div>
+                  <select value={auditType} onChange={e => setAuditType(e.target.value)} className="appearance-none" style={inputBase}>
+                    <option value="">Select…</option>
+                    {AUDIT_TYPES.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
                 </div>
               )}
-
-              {/* Notice extra */}
               {selectedCat === 'notice' && (
                 <>
                   <div>
                     <label className={labelCls} style={{ color: G.icon }}>Notice Number</label>
-                    <input value={noticeNo} onChange={e => setNoticeNo(e.target.value)}
-                      placeholder="e.g. SCN/GST/2026/1234"
-                      style={inputBase} />
+                    <input value={noticeNo} onChange={e => setNoticeNo(e.target.value)} style={inputBase} />
                   </div>
                   <div>
-                    <label className={labelCls} style={{ color: G.icon }}>Issuing Authority</label>
-                    <input value={authority} onChange={e => setAuthority(e.target.value)}
-                      placeholder="e.g. GST Department — Delhi"
-                      style={inputBase} />
+                    <label className={labelCls} style={{ color: G.icon }}>Authority</label>
+                    <input value={authority} onChange={e => setAuthority(e.target.value)} style={inputBase} />
                   </div>
                   <div>
                     <label className={labelCls} style={{ color: G.icon }}>Notice Type</label>
-                    <div className="relative">
-                      <select value={noticeType} onChange={e => setNoticeType(e.target.value)}
-                        className="appearance-none" style={inputBase}>
-                        <option value="">Select notice type…</option>
-                        {NOTICE_TYPES.map(n => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls} style={{ color: G.icon }}>Response Due Date</label>
-                    <input type="date" value={responseDue} onChange={e => setResponseDue(e.target.value)}
-                      style={inputBase} />
+                    <select value={noticeType} onChange={e => setNoticeType(e.target.value)} className="appearance-none" style={inputBase}>
+                      <option value="">Select…</option>
+                      {NOTICE_TYPES.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
                   </div>
                 </>
               )}
-
-              {/* Description */}
               <div>
-                <label className={labelCls} style={{ color: G.icon }}>Description / Notes</label>
-                <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)}
-                  placeholder="Add any relevant notes…"
-                  style={{ ...inputBase, resize: 'vertical' }} />
+                <label className={labelCls} style={{ color: G.icon }}>Description</label>
+                <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} style={{ ...inputBase, resize: 'vertical' }} />
               </div>
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="px-4 pb-4 pt-3 flex items-center gap-3 flex-shrink-0"
-          style={{ borderTop: `1px solid ${G.border}` }}>
+        <div className="px-4 pb-4 pt-3 flex items-center gap-3 flex-shrink-0" style={{ borderTop: `1px solid ${G.border}` }}>
           {step === 1 ? (
             <>
               <div className="flex-1" />
-              <button
-                disabled={!selectedCat}
-                onClick={() => { if (selectedCat) setStep(2) }}
+              <button disabled={!selectedCat} onClick={() => { if (selectedCat) setStep(2) }}
                 className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-                style={{ background: G.primary }}>
-                Continue →
-              </button>
+                style={{ background: G.primary }}>Continue →</button>
             </>
           ) : (
             <>
-              <button onClick={() => setStep(1)}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-                ← Back
-              </button>
+              <button onClick={() => setStep(1)} className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>← Back</button>
               <div className="flex-1" />
-              <button
-                disabled={!canSubmit}
-                onClick={handleSubmit}
+              <button disabled={!canSubmit} onClick={handleSubmit}
                 className="px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-                style={{ background: G.primary }}>
-                Create Work Item
-              </button>
+                style={{ background: G.primary }}>Create Work Item</button>
             </>
           )}
         </div>
@@ -1321,7 +1265,7 @@ function CreateModal({ onClose, onSubmit }: {
   )
 }
 
-// ─── Operations Intelligence Panel ────────────────────────────────────────────
+// ─── Ops Panel (admin/article — unchanged) ────────────────────────────────────
 function OpsPanel({
   items, currentUserName, isArticle: isArticleView, pendingActions, adminView, onResolve,
 }: {
@@ -1332,18 +1276,9 @@ function OpsPanel({
   adminView: boolean
   onResolve?: (id: string) => void
 }) {
-  // ── Admin Management Panel ───────────────────────────────────────────────────
   if (adminView) {
-    const pendingSummary: { type: PendingAction['type']; label: string; icon: React.ElementType }[] = [
-      { type: 'in_review',          label: 'Awaiting Review',     icon: ScanEye       },
-      { type: 'extension_request',  label: 'Extension Requests',  icon: CalendarClock },
-      { type: 'doc_request',        label: 'Doc Requests',        icon: FileUp        },
-    ]
-
     return (
       <div className="flex flex-col gap-4 h-full overflow-y-auto">
-
-        {/* 1. Team Overview */}
         <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
           <div className="flex items-center gap-2 mb-3">
             <Users className="h-3.5 w-3.5" style={{ color: G.secondary }} />
@@ -1352,9 +1287,9 @@ function OpsPanel({
           {MOCK_TEAM.map(member => {
             const memberItems = items.filter(i => i.assigned_to === member.name)
             const active = memberItems.filter(i => i.queue !== 'done').length
-            const done   = memberItems.filter(i => i.queue === 'done').length
-            const total  = active + done
-            const pct    = total > 0 ? (done / total) * 100 : 0
+            const done = memberItems.filter(i => i.queue === 'done').length
+            const total = active + done
+            const pct = total > 0 ? (done / total) * 100 : 0
             return (
               <div key={member.id} className="mb-3 last:mb-0">
                 <div className="flex items-center justify-between mb-1">
@@ -1365,14 +1300,12 @@ function OpsPanel({
                   <p className="text-[10px]" style={{ color: G.secondary }}>{active} active · {done} done</p>
                 </div>
                 <div className="h-1.5 w-full rounded-full" style={{ background: G.canvas }}>
-                  <div className="h-1.5 rounded-full transition-all" style={{ width: `${pct}%`, background: G.primary }} />
+                  <div className="h-1.5 rounded-full" style={{ width: `${pct}%`, background: G.primary }} />
                 </div>
               </div>
             )
           })}
         </div>
-
-        {/* 2. Pending Actions — full interactive cards */}
         <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
           <div className="flex items-center gap-2 mb-3">
             <AlertCircle className="h-3.5 w-3.5" style={{ color: G.secondary }} />
@@ -1413,80 +1346,20 @@ function OpsPanel({
             </div>
           )}
         </div>
-
-        {/* 3. Upcoming Deadlines (all team) */}
         <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="h-3.5 w-3.5" style={{ color: '#2563EB' }} />
             <p className="text-xs font-bold" style={{ color: G.primary }}>Upcoming Deadlines</p>
           </div>
           <div className="space-y-2">
-            {[...items]
-              .filter(i => i.queue !== 'done')
-              .sort((a, b) => a.days_remaining - b.days_remaining)
-              .slice(0, 4)
-              .map(item => (
-                <div key={item.id} className="flex items-center gap-2">
-                  <TypeChip type={item.type} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold truncate" style={{ color: G.primary }}>{item.title}</p>
-                  </div>
-                  <Avatar name={item.assigned_to} size="xs" />
-                  <DaysBadge days={item.days_remaining} />
+            {[...items].filter(i => i.queue !== 'done').sort((a, b) => a.days_remaining - b.days_remaining).slice(0, 4).map(item => (
+              <div key={item.id} className="flex items-center gap-2">
+                <TypeChip type={item.type} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold truncate" style={{ color: G.primary }}>{item.title}</p>
                 </div>
-              ))}
-            {items.filter(i => i.queue !== 'done').length === 0 && (
-              <p className="text-[10px]" style={{ color: G.icon }}>No upcoming deadlines</p>
-            )}
-          </div>
-        </div>
-
-        {/* 4. Due Today / Overdue */}
-        <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
-          <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="h-3.5 w-3.5" style={{ color: '#DC2626' }} />
-            <p className="text-xs font-bold" style={{ color: G.primary }}>Due Today / Overdue</p>
-          </div>
-          <div className="space-y-2">
-            {[...items]
-              .filter(i => i.days_remaining <= 0 && i.queue !== 'done')
-              .sort((a, b) => b.score - a.score)
-              .slice(0, 4)
-              .map(item => (
-                <div key={item.id} className="flex items-center gap-2">
-                  <PriorityDot priority={item.priority} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-semibold truncate" style={{ color: G.primary }}>{item.title}</p>
-                    <p className="text-[9px]" style={{ color: G.secondary }}>{item.client}</p>
-                  </div>
-                  <DaysBadge days={item.days_remaining} />
-                </div>
-              ))}
-            {items.filter(i => i.days_remaining <= 0 && i.queue !== 'done').length === 0 && (
-              <p className="text-[10px]" style={{ color: G.icon }}>No overdue items</p>
-            )}
-          </div>
-        </div>
-
-        {/* 5. Recent Activity */}
-        <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="h-3.5 w-3.5" style={{ color: G.secondary }} />
-            <p className="text-xs font-bold" style={{ color: G.primary }}>Recent Activity</p>
-          </div>
-          <div className="space-y-2.5">
-            {[
-              { text: 'GSTR-1 Apr 2026 review completed', time: '10m ago', color: '#16A34A' },
-              { text: 'Query raised on Redwood TDS return', time: '1h ago', color: '#D97706' },
-              { text: 'Bank statements uploaded by client', time: '2h ago', color: '#0584C7' },
-              { text: 'IT Notice response submitted', time: '5h ago', color: '#7C3AED' },
-            ].map((a, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className="h-1.5 w-1.5 rounded-full shrink-0 mt-1.5" style={{ background: a.color }} />
-                <div>
-                  <p className="text-[10px]" style={{ color: G.secondary }}>{a.text}</p>
-                  <p className="text-[9px]" style={{ color: G.icon }}>{a.time}</p>
-                </div>
+                <Avatar name={item.assigned_to} size="xs" />
+                <DaysBadge days={item.days_remaining} />
               </div>
             ))}
           </div>
@@ -1495,28 +1368,23 @@ function OpsPanel({
     )
   }
 
-  // ── Article / default panel ──────────────────────────────────────────────────
-  const filtered   = isArticleView && currentUserName ? items.filter(i => i.assigned_to === currentUserName) : items
-  const overdue    = filtered.filter(i => i.days_remaining < 0 && i.queue !== 'done')
-  const today      = filtered.filter(i => i.days_remaining >= 0 && i.days_remaining <= 1 && i.queue !== 'done')
-  const upcoming   = filtered.filter(i => i.days_remaining > 1 && i.days_remaining <= 5 && i.queue !== 'done')
-  const highRisk   = filtered.filter(i => i.score >= 70 && i.queue !== 'done').slice(0, 3)
-
+  const filtered = isArticleView && currentUserName ? items.filter(i => i.assigned_to === currentUserName) : items
+  const overdue = filtered.filter(i => i.days_remaining < 0 && i.queue !== 'done')
+  const today = filtered.filter(i => i.days_remaining >= 0 && i.days_remaining <= 1 && i.queue !== 'done')
+  const upcoming = filtered.filter(i => i.days_remaining > 1 && i.days_remaining <= 5 && i.queue !== 'done')
+  const highRisk = filtered.filter(i => i.score >= 70 && i.queue !== 'done').slice(0, 3)
   const myPending = isArticleView && currentUserName
-    ? pendingActions.filter(a => a.requestedBy === currentUserName && !a.resolved)
-    : []
+    ? pendingActions.filter(a => a.requestedBy === currentUserName && !a.resolved) : []
 
   const PENDING_TYPE_CFG: Record<PendingAction['type'], { icon: React.ElementType; label: string }> = {
-    in_review:          { icon: ScanEye,       label: 'Ready for Review' },
-    extension_request:  { icon: CalendarClock, label: 'Extension Request' },
-    doc_request:        { icon: FileUp,        label: 'Doc Request' },
-    query:              { icon: MessageSquare, label: 'Query' },
+    in_review: { icon: ScanEye, label: 'Ready for Review' },
+    extension_request: { icon: CalendarClock, label: 'Extension Request' },
+    doc_request: { icon: FileUp, label: 'Doc Request' },
+    query: { icon: MessageSquare, label: 'Query' },
   }
 
   return (
     <div className="flex flex-col gap-4 h-full overflow-y-auto">
-
-      {/* Sent to Admin — article view only */}
       {isArticleView && (
         <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
           <div className="flex items-center gap-2 mb-3">
@@ -1545,8 +1413,6 @@ function OpsPanel({
           )}
         </div>
       )}
-
-      {/* Today's Focus */}
       <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
         <div className="flex items-center gap-2 mb-3">
           <Star className="h-3.5 w-3.5" style={{ color: '#F59E0B' }} />
@@ -1566,8 +1432,6 @@ function OpsPanel({
           {today.length === 0 && <p className="text-[10px]" style={{ color: G.icon }}>No items due today</p>}
         </div>
       </div>
-
-      {/* Overdue */}
       {overdue.length > 0 && (
         <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
           <div className="flex items-center gap-2 mb-3">
@@ -1579,18 +1443,14 @@ function OpsPanel({
           </div>
           <div className="space-y-2">
             {overdue.map(item => (
-              <div key={item.id} className="flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold truncate" style={{ color: G.primary }}>{item.title}</p>
-                  <p className="text-[9px]" style={{ color: G.secondary }}>{item.client} · {Math.abs(item.days_remaining)}d overdue</p>
-                </div>
+              <div key={item.id} className="flex-1 min-w-0">
+                <p className="text-[10px] font-semibold truncate" style={{ color: G.primary }}>{item.title}</p>
+                <p className="text-[9px]" style={{ color: G.secondary }}>{item.client} · {Math.abs(item.days_remaining)}d overdue</p>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Upcoming Deadlines */}
       <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
         <div className="flex items-center gap-2 mb-3">
           <Calendar className="h-3.5 w-3.5" style={{ color: '#2563EB' }} />
@@ -1606,12 +1466,8 @@ function OpsPanel({
               <span className="text-[9px] font-semibold shrink-0" style={{ color: '#2563EB' }}>{item.days_remaining}d</span>
             </div>
           ))}
-          {upcoming.length === 0 && <p className="text-[10px]" style={{ color: G.icon }}>No upcoming deadlines</p>}
         </div>
       </div>
-
-
-      {/* High Risk Items */}
       <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="h-3.5 w-3.5" style={{ color: '#DC2626' }} />
@@ -1633,117 +1489,30 @@ function OpsPanel({
           ))}
         </div>
       </div>
-
-      {/* Recent Activity */}
-      <div className="rounded-2xl p-4" style={{ background: G.white, border: `1px solid ${G.border}` }}>
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="h-3.5 w-3.5" style={{ color: G.secondary }} />
-          <p className="text-xs font-bold" style={{ color: G.primary }}>Recent Activity</p>
-        </div>
-        <div className="space-y-2.5">
-          {[
-            { text: 'GSTR-1 Apr 2026 review completed', time: '10m ago', color: '#16A34A' },
-            { text: 'Query raised on Redwood TDS return', time: '1h ago', color: '#D97706' },
-            { text: 'Bank statements uploaded by client', time: '2h ago', color: '#0584C7' },
-            { text: 'IT Notice response submitted', time: '5h ago', color: '#7C3AED' },
-          ].map((a, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <div className="h-1.5 w-1.5 rounded-full shrink-0 mt-1.5" style={{ background: a.color }} />
-              <div>
-                <p className="text-[10px]" style={{ color: G.secondary }}>{a.text}</p>
-                <p className="text-[9px]" style={{ color: G.icon }}>{a.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
 
-// ─── Admin Pending Panel ──────────────────────────────────────────────────────
 const ADMIN_PENDING_TYPE_CFG: Record<PendingAction['type'], { icon: React.ElementType; label: string }> = {
-  in_review:         { icon: ScanEye,       label: 'Ready for Review' },
+  in_review: { icon: ScanEye, label: 'Ready for Review' },
   extension_request: { icon: CalendarClock, label: 'Extension Request' },
-  doc_request:       { icon: FileUp,        label: 'Doc Request' },
-  query:             { icon: MessageSquare, label: 'Query' },
+  doc_request: { icon: FileUp, label: 'Doc Request' },
+  query: { icon: MessageSquare, label: 'Query' },
 }
 
-function AdminPendingPanel({
-  actions, onResolve,
-}: {
-  actions: PendingAction[]
-  onResolve: (id: string) => void
-}) {
-  const unresolved = actions.filter(a => !a.resolved)
-  if (unresolved.length === 0) return null
-
-  return (
-    <div className="px-5 py-3 flex-shrink-0" style={{ background: G.white, borderBottom: `1px solid ${G.border}` }}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: G.secondary }}>
-          Pending Your Action
-        </span>
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-          style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-          {unresolved.length}
-        </span>
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        {unresolved.map(action => {
-          const cfg = ADMIN_PENDING_TYPE_CFG[action.type]
-          const Icon = cfg.icon
-          return (
-            <div
-              key={action.id}
-              className="inline-flex flex-col shrink-0 rounded-xl p-3"
-              style={{ width: 220, background: G.white, border: `1px solid ${G.border}` }}
-            >
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-                  style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-                  <Icon className="h-2.5 w-2.5" />{cfg.label}
-                </span>
-              </div>
-              <p className="text-xs font-semibold leading-tight truncate mb-0.5" style={{ color: G.primary }}>
-                {action.workItemTitle}
-              </p>
-              <p className="text-[10px] mb-0.5" style={{ color: G.secondary }}>{action.client}</p>
-              <p className="text-[9px] mb-0.5" style={{ color: G.icon }}>by {action.requestedBy}</p>
-              {action.newDate && (
-                <p className="text-[9px] mb-1" style={{ color: G.icon }}>Proposed: {action.newDate}</p>
-              )}
-              <button
-                onClick={() => onResolve(action.id)}
-                className="mt-auto self-start text-[10px] font-semibold px-2 py-1 rounded-lg text-white"
-                style={{ background: G.primary }}
-              >
-                Mark Done
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Team Swimlane View (admin only) ─────────────────────────────────────────
+// ─── Team Swimlane (admin) ────────────────────────────────────────────────────
 function TeamSwimlaneView({ items, onItemClick }: { items: WorkItem[]; onItemClick: (i: WorkItem) => void }) {
   return (
     <div className="flex flex-col gap-3">
       {MOCK_TEAM.map(member => {
         const memberItems = items.filter(i => i.assigned_to === member.name)
         const activeCount = memberItems.filter(i => i.queue !== 'done').length
-        const doneCount   = memberItems.filter(i => i.queue === 'done').length
-        const total       = memberItems.length
-        const pct         = total > 0 ? Math.round((doneCount / total) * 100) : 0
-
+        const doneCount = memberItems.filter(i => i.queue === 'done').length
+        const total = memberItems.length
+        const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0
         return (
           <div key={member.id} className="flex rounded-2xl overflow-hidden"
             style={{ background: G.white, border: `1px solid ${G.border}`, minHeight: 130 }}>
-
-            {/* Left header */}
             <div className="w-44 shrink-0 flex flex-col justify-center gap-2 px-4 py-3"
               style={{ borderRight: `1px solid ${G.border}`, background: G.canvas }}>
               <div className="flex items-center gap-2">
@@ -1756,30 +1525,21 @@ function TeamSwimlaneView({ items, onItemClick }: { items: WorkItem[]; onItemCli
                   <p className="text-[9px]" style={{ color: G.icon }}>{member.role}</p>
                 </div>
               </div>
-              <p className="text-[9px]" style={{ color: G.secondary }}>
-                {activeCount} active · {doneCount} done
-              </p>
-              {/* Completion bar */}
+              <p className="text-[9px]" style={{ color: G.secondary }}>{activeCount} active · {doneCount} done</p>
               <div className="h-1 rounded-full overflow-hidden" style={{ background: G.border }}>
                 <div className="h-1 rounded-full" style={{ width: `${pct}%`, background: G.primary }} />
               </div>
             </div>
-
-            {/* Scrollable cards */}
             <div className="flex gap-2 p-3 overflow-x-auto flex-1" style={{ scrollbarWidth: 'thin', alignItems: 'flex-start' }}>
               {memberItems.length === 0 ? (
                 <div className="flex items-center justify-center w-full py-4">
                   <p className="text-[10px]" style={{ color: G.icon }}>No work assigned</p>
                 </div>
-              ) : (
-                memberItems
-                  .sort((a, b) => b.score - a.score)
-                  .map(item => (
-                    <div key={item.id} style={{ minWidth: 220, maxWidth: 220 }}>
-                      <WorkCard item={item} onClick={() => onItemClick(item)} />
-                    </div>
-                  ))
-              )}
+              ) : memberItems.sort((a, b) => b.score - a.score).map(item => (
+                <div key={item.id} style={{ minWidth: 220, maxWidth: 220 }}>
+                  <WorkCard item={item} onClick={() => onItemClick(item)} />
+                </div>
+              ))}
             </div>
           </div>
         )
@@ -1788,7 +1548,7 @@ function TeamSwimlaneView({ items, onItemClick }: { items: WorkItem[]; onItemCli
   )
 }
 
-// ─── Client Group View (admin only) ──────────────────────────────────────────
+// ─── Client Group View (admin) ────────────────────────────────────────────────
 function ClientGroupView({ items, onItemClick }: { items: WorkItem[]; onItemClick: (i: WorkItem) => void }) {
   const clients = Array.from(new Set(items.map(i => i.client))).sort()
   return (
@@ -1798,7 +1558,6 @@ function ClientGroupView({ items, onItemClick }: { items: WorkItem[]; onItemClic
         return (
           <div key={clientName} className="rounded-2xl overflow-hidden"
             style={{ background: G.white, border: `1px solid ${G.border}` }}>
-            {/* Client header */}
             <div className="px-4 py-3 flex items-center gap-3"
               style={{ background: G.canvas, borderBottom: `1px solid ${G.border}` }}>
               <div className="h-7 w-7 rounded-lg flex items-center justify-center text-[10px] font-bold"
@@ -1809,8 +1568,6 @@ function ClientGroupView({ items, onItemClick }: { items: WorkItem[]; onItemClic
               <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{ background: G.border, color: G.secondary }}>{clientItems.length} items</span>
             </div>
-
-            {/* Items table */}
             <table className="w-full text-xs">
               <thead>
                 <tr style={{ borderBottom: `1px solid ${G.border}` }}>
@@ -1826,9 +1583,7 @@ function ClientGroupView({ items, onItemClick }: { items: WorkItem[]; onItemClic
                   return (
                     <tr key={item.id} onClick={() => onItemClick(item)}
                       className="cursor-pointer transition-colors"
-                      style={{ borderBottom: `1px solid ${G.border}` }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.canvas}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                      style={{ borderBottom: `1px solid ${G.border}` }}>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-1.5">
                           <PriorityDot priority={item.priority} />
@@ -1871,6 +1626,34 @@ function ClientGroupView({ items, onItemClick }: { items: WorkItem[]; onItemClic
   )
 }
 
+// ─── View Toggle component ────────────────────────────────────────────────────
+function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
+  return (
+    <div className="flex rounded-xl overflow-hidden shrink-0"
+      style={{ border: `1px solid ${G.border}`, background: G.white }}>
+      <button onClick={() => onChange('list')}
+        className="flex items-center justify-center h-[34px] w-[34px] transition-all"
+        style={{
+          background: view === 'list' ? G.primary : 'transparent',
+          color: view === 'list' ? '#FFFFFF' : G.icon,
+        }}
+        title="List view">
+        <List className="h-3.5 w-3.5" />
+      </button>
+      <button onClick={() => onChange('folder')}
+        className="flex items-center justify-center h-[34px] w-[34px] transition-all"
+        style={{
+          background: view === 'folder' ? G.primary : 'transparent',
+          color: view === 'folder' ? '#FFFFFF' : G.icon,
+          borderLeft: `1px solid ${G.border}`,
+        }}
+        title="Folder / Board view">
+        <LayoutGrid className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  )
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // Main Page
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1879,14 +1662,18 @@ export function WorkCenterPage() {
   const currentUser = useAuthStore(s => s.user)
   const articleView = isArticle()
   const adminView = isAdmin()
-  const [search,         setSearch]         = useState('')
-  const [filterType,     setFilterType]     = useState<WorkType | 'all'>('all')
+
+  const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState<WorkType | 'all'>('all')
   const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all')
-  const [selectedItem,   setSelectedItem]   = useState<WorkItem | null>(null)
-  const [showCreate,     setShowCreate]     = useState(false)
+  const [filterStatus, setFilterStatus] = useState<QueueId | 'all'>('all')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [showDashboard, setShowDashboard] = useState(false)
   const [pendingActions, setPendingActions] = useState<PendingAction[]>(PENDING_ACTIONS)
-  const [workItems,      setWorkItems]      = useState<WorkItem[]>(RAW_ITEMS)
-  const [adminTab,       setAdminTab]       = useState<'team' | 'client' | 'board'>('team')
+  const [workItems, setWorkItems] = useState<WorkItem[]>(RAW_ITEMS)
+  const [adminTab, setAdminTab] = useState<'team' | 'client' | 'board'>('board')
 
   function addPendingAction(action: Omit<PendingAction, 'id' | 'resolved' | 'createdAt'>) {
     const newAction: PendingAction = { ...action, id: `pa_${Date.now()}`, resolved: false, createdAt: 'Just now' }
@@ -1922,7 +1709,6 @@ export function WorkCenterPage() {
     setShowCreate(false)
   }
 
-  // Derived filtered list
   const allItems = useMemo(() => {
     let items = workItems
     if (articleView && currentUser?.full_name) {
@@ -1932,14 +1718,17 @@ export function WorkCenterPage() {
       i.title.toLowerCase().includes(search.toLowerCase()) ||
       i.client.toLowerCase().includes(search.toLowerCase())
     )
-    if (filterType !== 'all')     items = items.filter(i => i.type === filterType)
+    if (filterType !== 'all') items = items.filter(i => i.type === filterType)
     if (filterPriority !== 'all') items = items.filter(i => i.priority === filterPriority)
+    if (filterStatus !== 'all') items = items.filter(i => i.queue === filterStatus)
     return items
-  }, [workItems, search, filterType, filterPriority, currentUser?.full_name, articleView])
+  }, [workItems, search, filterType, filterPriority, filterStatus, currentUser?.full_name, articleView])
 
-  // Board queues
   const queues: QueueId[] = ['todo', 'in_progress', 'in_review', 'done']
   const queuedItems = (qid: QueueId) => allItems.filter(i => i.queue === qid).sort((a, b) => b.score - a.score)
+
+  // Whether to use admin's special views (team/client) — only meaningful in board mode
+  const useAdminGroupedView = !articleView && viewMode === 'folder' && adminTab !== 'board'
 
   return (
     <div className="flex h-full" style={{ background: G.canvas }}>
@@ -1947,132 +1736,182 @@ export function WorkCenterPage() {
       {/* ── Main content ────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-        {/* Top header */}
-        <div className="px-6 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: `1px solid ${G.border}`, background: G.white }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-xl font-bold" style={{ color: G.primary }}>
+        {/* Top header — title + ALL controls in one row */}
+        <div className="px-6 pt-5 pb-4 flex-shrink-0"
+          style={{ borderBottom: `1px solid ${G.border}`, background: G.white }}>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Title block */}
+            <div className="shrink-0">
+              <h1 className="text-xl font-bold leading-tight" style={{ color: G.primary }}>
                 {articleView ? 'My Work' : 'Work Center'}
               </h1>
-              <p className="text-xs mt-0.5" style={{ color: G.secondary }}>
+              <p className="text-[10px] mt-0.5" style={{ color: G.secondary }}>
                 {articleView
-                  ? `${currentUser?.full_name ?? 'My'} · Assigned tasks, filings & notices`
-                  : 'All compliance operations — GST · TDS · Audit · Notices · Tasks'}
+                  ? 'Assigned tasks, filings & notices'
+                  : 'All compliance operations'}
               </p>
             </div>
+
+            {/* Search */}
+            <div className="relative w-56 shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: G.icon }} />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search items, clients…"
+                className="w-full pl-8 pr-3 py-[7px] rounded-xl text-xs outline-none"
+                style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.primary }} />
+            </div>
+
+            {/* Type filter */}
+            <div className="relative shrink-0">
+              <select value={filterType} onChange={e => setFilterType(e.target.value as WorkType | 'all')}
+                className="appearance-none pl-3 pr-7 py-[7px] rounded-xl text-xs font-semibold outline-none cursor-pointer"
+                style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+                <option value="all">All Types</option>
+                {Object.entries(TYPE_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
+            </div>
+
+            {/* Priority filter */}
+            <div className="relative shrink-0">
+              <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as Priority | 'all')}
+                className="appearance-none pl-3 pr-7 py-[7px] rounded-xl text-xs font-semibold outline-none cursor-pointer"
+                style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+                <option value="all">All Priorities</option>
+                {(Object.keys(PRIORITY_CFG) as Priority[]).map(p => <option key={p} value={p}>{PRIORITY_CFG[p].label}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
+            </div>
+
+            {/* NEW: Status filter (todo/in_progress/in_review/done) */}
+            <div className="relative shrink-0">
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as QueueId | 'all')}
+                className="appearance-none pl-3 pr-7 py-[7px] rounded-xl text-xs font-semibold outline-none cursor-pointer"
+                style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+                <option value="all">All Status</option>
+                {(Object.keys(QUEUE_CFG) as QueueId[]).map(q => <option key={q} value={q}>{QUEUE_CFG[q].label}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
+            </div>
+
+            <div className="flex-1" />
+
+            {/* View toggle (list/folder) */}
+            <ViewToggle view={viewMode} onChange={setViewMode} />
+
+            {/* Admin grouping selector — only when in folder mode */}
+            {!articleView && viewMode === 'folder' && (
+              <div className="flex gap-1 shrink-0">
+                {([
+                  { id: 'board', label: 'Board' },
+                  { id: 'team', label: 'By Team' },
+                  { id: 'client', label: 'By Client' },
+                ] as const).map(v => (
+                  <button key={v.id} onClick={() => setAdminTab(v.id)}
+                    className="px-3 py-[7px] rounded-xl text-xs font-semibold transition-colors"
+                    style={{
+                      background: adminTab === v.id ? G.primary : G.white,
+                      color: adminTab === v.id ? '#fff' : G.secondary,
+                      border: `1px solid ${adminTab === v.id ? G.primary : G.border}`,
+                    }}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Dashboard toggle button */}
+            <button onClick={() => setShowDashboard(v => !v)}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-[7px] text-xs font-semibold transition-all shrink-0"
+              style={{
+                background: showDashboard ? G.primary : G.white,
+                color: showDashboard ? '#fff' : G.secondary,
+                border: `1px solid ${showDashboard ? G.primary : G.border}`,
+              }}
+              title={showDashboard ? 'Hide dashboard' : 'Show dashboard'}>
+              {showDashboard
+                ? <PanelRightClose className="h-3.5 w-3.5" />
+                : <PanelRightOpen className="h-3.5 w-3.5" />}
+              {articleView ? 'My Dashboard' : 'Insights'}
+            </button>
+
+            {/* Create button — admin only */}
             {!articleView && (
               <button onClick={() => setShowCreate(true)}
-                className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white"
-                style={{ background: G.primary, boxShadow: '0 4px 12px rgba(15,23,42,0.2)' }}>
-                <Plus className="h-4 w-4" />Create Work Item
+                className="flex items-center gap-1.5 rounded-xl px-3.5 py-[7px] text-xs font-bold text-white shrink-0"
+                style={{ background: G.primary, boxShadow: '0 4px 12px rgba(15,23,42,0.18)' }}>
+                <Plus className="h-3.5 w-3.5" />Create
               </button>
             )}
           </div>
-
         </div>
 
-        {/* Filter + view bar */}
-        <div className="px-6 py-3 flex items-center gap-3 flex-shrink-0"
-          style={{ background: G.white, borderBottom: `1px solid ${G.border}` }}>
-          {/* Search */}
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: G.icon }} />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search items, clients…"
-              className="w-full pl-8 pr-3 py-2 rounded-xl text-sm outline-none"
-              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.primary }} />
-          </div>
-
-          {/* Type filter */}
-          <div className="relative">
-            <select value={filterType} onChange={e => setFilterType(e.target.value as WorkType | 'all')}
-              className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold outline-none"
-              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-              <option value="all">All Types</option>
-              {Object.entries(TYPE_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-          </div>
-
-          {/* Priority filter */}
-          <div className="relative">
-            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as Priority | 'all')}
-              className="appearance-none pl-3 pr-7 py-2 rounded-xl text-xs font-semibold outline-none"
-              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-              <option value="all">All Priorities</option>
-              {(Object.keys(PRIORITY_CFG) as Priority[]).map(p => <option key={p} value={p}>{PRIORITY_CFG[p].label}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3" style={{ color: G.icon }} />
-          </div>
-
-          <div className="flex-1" />
-
-          {/* View toggle — admin only */}
-          {!articleView && (
-            <div className="flex gap-1">
-              {([
-                { id: 'team',   label: 'By Team'   },
-                { id: 'client', label: 'By Client' },
-                { id: 'board',  label: 'All Work'  },
-              ] as const).map(v => (
-                <button key={v.id} onClick={() => setAdminTab(v.id)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
-                  style={{
-                    background: adminTab === v.id ? G.primary : G.white,
-                    color: adminTab === v.id ? '#fff' : G.secondary,
-                    border: `1px solid ${adminTab === v.id ? G.primary : G.border}`,
-                  }}>
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Main content — differs by role and tab */}
+        {/* Main content area — list or folder views */}
         <div className="flex-1 overflow-auto p-5">
-          {articleView ? (
-            /* Article: always 4-column kanban */
-            <div className="flex gap-3" style={{ minWidth: 'max-content', alignItems: 'flex-start' }}>
-              {queues.map(qid => (
-                <BoardColumn key={qid} queueId={qid} items={queuedItems(qid)}
-                  onCardClick={setSelectedItem} showAssignedBy={false} />
-              ))}
-            </div>
-          ) : adminTab === 'team' ? (
-            <TeamSwimlaneView items={allItems} onItemClick={setSelectedItem} />
-          ) : adminTab === 'client' ? (
-            <ClientGroupView items={allItems} onItemClick={setSelectedItem} />
+
+          {viewMode === 'list' ? (
+            /* LIST VIEW — same table for both article and admin */
+            <WorkListView
+              items={allItems}
+              onItemClick={setSelectedItem}
+              showAssignedBy={!articleView}
+            />
           ) : (
-            /* All Work: same 4-column kanban */
-            <div className="flex gap-3" style={{ minWidth: 'max-content', alignItems: 'flex-start' }}>
-              {queues.map(qid => (
-                <BoardColumn key={qid} queueId={qid} items={queuedItems(qid)}
-                  onCardClick={setSelectedItem} showAssignedBy={true} />
-              ))}
-            </div>
+            /* FOLDER VIEW */
+            articleView ? (
+              /* Article: 4-column kanban */
+              <div className="flex gap-3" style={{ minWidth: 'max-content', alignItems: 'flex-start' }}>
+                {queues.map(qid => (
+                  <BoardColumn key={qid} queueId={qid} items={queuedItems(qid)}
+                    onCardClick={setSelectedItem} showAssignedBy={false} />
+                ))}
+              </div>
+            ) : adminTab === 'team' ? (
+              <TeamSwimlaneView items={allItems} onItemClick={setSelectedItem} />
+            ) : adminTab === 'client' ? (
+              <ClientGroupView items={allItems} onItemClick={setSelectedItem} />
+            ) : (
+              /* Admin board */
+              <div className="flex gap-3" style={{ minWidth: 'max-content', alignItems: 'flex-start' }}>
+                {queues.map(qid => (
+                  <BoardColumn key={qid} queueId={qid} items={queuedItems(qid)}
+                    onCardClick={setSelectedItem} showAssignedBy={true} />
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
 
-      {/* ── Right: Ops Intelligence Panel ──────────────────────── */}
-      <div className="hidden xl:flex flex-col w-72 shrink-0 overflow-y-auto p-4 gap-4"
-        style={{ background: G.canvas, borderLeft: `1px solid ${G.border}` }}>
-        <div className="flex items-center gap-2 py-1">
-          <BarChart2 className="h-3.5 w-3.5" style={{ color: G.secondary }} />
-          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: G.secondary }}>
-            {articleView ? 'My Dashboard' : 'Operations Intelligence'}
-          </p>
+      {/* ── Right: Dashboard Panel (conditionally shown) ──────────── */}
+      {showDashboard && (
+        <div className="flex flex-col w-72 shrink-0 overflow-y-auto p-4 gap-4"
+          style={{ background: G.canvas, borderLeft: `1px solid ${G.border}` }}>
+          <div className="flex items-center justify-between py-1">
+            <div className="flex items-center gap-2">
+              <BarChart2 className="h-3.5 w-3.5" style={{ color: G.secondary }} />
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: G.secondary }}>
+                {articleView ? 'My Dashboard' : 'Operations Intelligence'}
+              </p>
+            </div>
+            <button onClick={() => setShowDashboard(false)}
+              className="p-1 rounded-lg transition-colors"
+              style={{ color: G.icon }}
+              title="Hide dashboard">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <OpsPanel
+            items={workItems}
+            currentUserName={currentUser?.full_name}
+            isArticle={articleView}
+            pendingActions={pendingActions}
+            adminView={!articleView}
+            onResolve={resolveAction}
+          />
         </div>
-        <OpsPanel
-          items={workItems}
-          currentUserName={currentUser?.full_name}
-          isArticle={articleView}
-          pendingActions={pendingActions}
-          adminView={!articleView}
-          onResolve={resolveAction}
-        />
-      </div>
+      )}
 
       {/* ── Detail Drawer ───────────────────────────────────────── */}
       {selectedItem && (

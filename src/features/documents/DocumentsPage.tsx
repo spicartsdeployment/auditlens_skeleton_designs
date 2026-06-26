@@ -134,7 +134,7 @@ export function DocumentsPage() {
         <ContentCard>
           <div className="p-5">
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Client</th><th>FY</th><th>Category</th><th>Size</th><th>Uploaded</th><th>Ver</th><th /></tr></thead>
+              <thead><tr><th>Name</th><th>Client</th><th>FY</th><th>Category</th><th>Size</th><th>Uploaded</th><th /></tr></thead>
               <tbody>
                 {searchFiltered.map(doc => (
                   <tr key={doc.id} className="cursor-pointer" onClick={() => toast.info(`Opening ${doc.name}`)}>
@@ -154,7 +154,7 @@ export function DocumentsPage() {
                     </td>
                     <td>{(doc.size_kb / 1024).toFixed(1)} MB</td>
                     <td>{format(parseISO(doc.uploaded_at), 'd MMM yyyy')}</td>
-                    <td>v{doc.version}</td>
+
                     <td>
                       <button onClick={e => { e.stopPropagation(); toast.success('Downloading') }}
                         className="text-xs font-semibold" style={{ color: '#0584C7' }}>

@@ -16,16 +16,16 @@ import { G } from '@/shared/components/GrayKpi'
 
 /** Channel accent — minimal color used ONLY for accent bar and dot */
 const CHANNEL_ACCENT: Record<ChannelType, string> = {
-  internal: G.primary,     // deep slate
-  whatsapp: '#22C55E',     // green (brand recognition)
-  email:    '#3B82F6',     // blue (email standard)
-  portal:   '#8B5CF6',     // purple
+  internal: G.primary,
+  whatsapp: '#22C55E',
+  email: '#3B82F6',
+  portal: '#8B5CF6',
 }
 const CHANNEL_META: Record<ChannelType, { label: string; icon: React.ElementType }> = {
   internal: { label: 'Internal', icon: Users },
   whatsapp: { label: 'WhatsApp', icon: Smartphone },
-  email:    { label: 'Email',    icon: Mail },
-  portal:   { label: 'Portal',   icon: Globe },
+  email: { label: 'Email', icon: Mail },
+  portal: { label: 'Portal', icon: Globe },
 }
 
 function ChannelBadge({ channel, size = 'sm' }: { channel: ChannelType; size?: 'xs' | 'sm' }) {
@@ -73,18 +73,16 @@ function ThreadItem({ thread, isActive, onClick }: { thread: ThreadExt; isActive
       onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       onClick={onClick}
     >
-      {/* Avatar */}
       <div className="relative shrink-0">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl font-bold text-sm text-white"
           style={{ background: isExternal ? G.canvas : G.primary, border: isExternal ? `2px solid ${accent}33` : 'none' }}>
           {isExternal
             ? <meta.icon className="h-5 w-5" style={{ color: accent }} />
             : (thread.is_group
-                ? <Users className="h-5 w-5 text-white" />
-                : <span>{(thread.title ?? 'D')[0]}</span>)
+              ? <Users className="h-5 w-5 text-white" />
+              : <span>{(thread.title ?? 'D')[0]}</span>)
           }
         </div>
-        {/* Channel indicator dot */}
         <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full flex items-center justify-center"
           style={{ background: accent, border: `2px solid ${G.white}` }}>
           <div className="h-1 w-1 rounded-full bg-white/80" />
@@ -160,7 +158,6 @@ function MessageBubble({ msg, senderName, isOwn }: { msg: MessageExt; senderName
     )
   }
 
-  // External (whatsapp / portal)
   if (msg.source !== 'internal') {
     return (
       <div className={cn('max-w-[72%]', isOwn ? 'ml-auto' : 'mr-auto')}>
@@ -185,7 +182,6 @@ function MessageBubble({ msg, senderName, isOwn }: { msg: MessageExt; senderName
     )
   }
 
-  // Internal
   return (
     <div className={cn('flex items-end gap-2.5 max-w-[72%]', isOwn ? 'ml-auto flex-row-reverse' : '')}>
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-white"
@@ -228,7 +224,8 @@ function DateDivider({ date }: { date: string }) {
 export function CommunicationPage() {
   const user = useAuthStore(s => s.user)
   const [search, setSearch] = useState('')
-  const [channelFilter, setChannelFilter] = useState<'all' | ChannelType>('all')
+  // Default to 'internal' since 'all' is removed
+  const [channelFilter, setChannelFilter] = useState<ChannelType>('internal')
   const [selectedId, setSelectedId] = useState<number | null>(MOCK_THREADS[3].id)
   const [messages, setMessages] = useState(MOCK_MESSAGES)
   const [draft, setDraft] = useState('')
@@ -236,7 +233,7 @@ export function CommunicationPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const threads = MOCK_THREADS.filter(t => {
-    if (channelFilter !== 'all' && t.channel !== channelFilter) return false
+    if (t.channel !== channelFilter) return false
     if (search && !t.title?.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
@@ -265,6 +262,14 @@ export function CommunicationPage() {
 
   const totalUnread = MOCK_THREADS.reduce((s, t) => s + (t.unread_count ?? 0), 0)
 
+  // Unread counts per channel (for badge display in filter pills)
+  const unreadByChannel: Record<ChannelType, number> = {
+    internal: MOCK_THREADS.filter(t => t.channel === 'internal').reduce((s, t) => s + (t.unread_count ?? 0), 0),
+    whatsapp: MOCK_THREADS.filter(t => t.channel === 'whatsapp').reduce((s, t) => s + (t.unread_count ?? 0), 0),
+    email: MOCK_THREADS.filter(t => t.channel === 'email').reduce((s, t) => s + (t.unread_count ?? 0), 0),
+    portal: MOCK_THREADS.filter(t => t.channel === 'portal').reduce((s, t) => s + (t.unread_count ?? 0), 0),
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
       {/* ── Header ─────────────────────────────────────── */}
@@ -280,7 +285,6 @@ export function CommunicationPage() {
             )}
           </p>
         </div>
-        {/* Channel legend — dot + label, no color backgrounds */}
         <div className="hidden md:flex items-center gap-3">
           {(Object.keys(CHANNEL_META) as ChannelType[]).map(ch => (
             <div key={ch} className="flex items-center gap-1.5">
@@ -308,12 +312,13 @@ export function CommunicationPage() {
                 style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.primary }}
               />
             </div>
-            {/* Channel filter — gray pills with accent text when active */}
+            {/* Channel filter — only real channels, no "All" */}
             <div className="flex gap-1 overflow-x-auto no-scrollbar">
-              {(['all', 'internal', 'whatsapp', 'email', 'portal'] as const).map(ch => {
+              {(['internal', 'whatsapp', 'email', 'portal'] as const).map(ch => {
                 const isSelected = channelFilter === ch
-                const accent = ch !== 'all' ? CHANNEL_ACCENT[ch] : G.primary
-                const Icon = ch !== 'all' ? CHANNEL_META[ch].icon : null
+                const accent = CHANNEL_ACCENT[ch]
+                const Icon = CHANNEL_META[ch].icon
+                const unread = unreadByChannel[ch]
                 return (
                   <button key={ch} onClick={() => setChannelFilter(ch)}
                     className="shrink-0 flex items-center gap-1 rounded-full text-[10px] font-semibold transition-all"
@@ -321,35 +326,37 @@ export function CommunicationPage() {
                       ? { background: G.primary, color: '#FFFFFF', padding: '3px 10px' }
                       : { background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary, padding: '3px 10px' }
                     }>
-                    {Icon && <Icon className="h-2.5 w-2.5" style={isSelected ? undefined : { color: accent }} />}
-                    {ch === 'all' ? 'All' : CHANNEL_META[ch].label}
+                    <Icon className="h-2.5 w-2.5" style={isSelected ? undefined : { color: accent }} />
+                    {CHANNEL_META[ch].label}
+                    {unread > 0 && (
+                      <span className="flex items-center justify-center rounded-full text-[8px] font-bold tabular-nums"
+                        style={{
+                          background: isSelected ? 'rgba(255,255,255,0.25)' : accent,
+                          color: '#FFFFFF',
+                          minWidth: 14, height: 14, padding: '0 4px',
+                        }}>
+                        {unread}
+                      </span>
+                    )}
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Thread sections */}
+          {/* Thread list — single section, no headers */}
           <div className="flex-1 overflow-y-auto py-2 space-y-0.5 px-2">
-            {channelFilter === 'all' && (
-              <>
-                {threads.filter(t => t.channel !== 'internal').length > 0 && (
-                  <p className="px-2 pt-2 pb-1 text-[9px] font-bold uppercase tracking-widest" style={{ color: G.icon }}>Client Messages</p>
-                )}
-                {threads.filter(t => t.channel !== 'internal').map(t => (
-                  <ThreadItem key={t.id} thread={t} isActive={selectedId === t.id} onClick={() => { setSelectedId(t.id); setMobileShowThread(true) }} />
-                ))}
-                {threads.filter(t => t.channel === 'internal').length > 0 && (
-                  <p className="px-2 pt-3 pb-1 text-[9px] font-bold uppercase tracking-widest" style={{ color: G.icon }}>Internal Team</p>
-                )}
-                {threads.filter(t => t.channel === 'internal').map(t => (
-                  <ThreadItem key={t.id} thread={t} isActive={selectedId === t.id} onClick={() => { setSelectedId(t.id); setMobileShowThread(true) }} />
-                ))}
-              </>
+            {threads.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12">
+                <MessageSquare className="h-8 w-8" style={{ color: G.border }} />
+                <p className="text-xs" style={{ color: G.icon }}>No {CHANNEL_META[channelFilter].label.toLowerCase()} conversations</p>
+              </div>
+            ) : (
+              threads.map(t => (
+                <ThreadItem key={t.id} thread={t} isActive={selectedId === t.id}
+                  onClick={() => { setSelectedId(t.id); setMobileShowThread(true) }} />
+              ))
             )}
-            {channelFilter !== 'all' && threads.map(t => (
-              <ThreadItem key={t.id} thread={t} isActive={selectedId === t.id} onClick={() => { setSelectedId(t.id); setMobileShowThread(true) }} />
-            ))}
           </div>
         </aside>
 
@@ -363,7 +370,7 @@ export function CommunicationPage() {
             </div>
           ) : (
             <>
-              {/* ── Conversation header ── */}
+              {/* Conversation header */}
               <div className="flex items-center gap-3 px-4 py-3 shrink-0"
                 style={{ borderBottom: `1px solid ${G.border}`, background: G.white }}>
                 <button className="lg:hidden mr-1" style={{ color: G.secondary }} onClick={() => setMobileShowThread(false)}>
@@ -375,8 +382,8 @@ export function CommunicationPage() {
                     const ChIcon = CHANNEL_META[selected.channel].icon
                     return selected.channel === 'internal'
                       ? (selected.is_group
-                          ? <Users className="h-4 w-4" style={{ color: G.icon }} />
-                          : <span className="text-sm font-bold" style={{ color: G.primary }}>{(selected.title ?? 'D')[0]}</span>)
+                        ? <Users className="h-4 w-4" style={{ color: G.icon }} />
+                        : <span className="text-sm font-bold" style={{ color: G.primary }}>{(selected.title ?? 'D')[0]}</span>)
                       : <ChIcon className="h-4 w-4" style={{ color: CHANNEL_ACCENT[selected.channel] }} />
                   })()}
                 </div>
@@ -396,7 +403,7 @@ export function CommunicationPage() {
                 </button>
               </div>
 
-              {/* ── External channel notice — gray border, accent text ── */}
+              {/* External channel notice */}
               {selected.channel !== 'internal' && (() => {
                 const ChIcon = CHANNEL_META[selected.channel].icon
                 const accent = CHANNEL_ACCENT[selected.channel]
@@ -413,7 +420,7 @@ export function CommunicationPage() {
                 )
               })()}
 
-              {/* ── Messages area ── */}
+              {/* Messages area */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {threadMsgs.map((msg, i) => {
                   const prev = i > 0 ? threadMsgs[i - 1] : null
@@ -429,7 +436,7 @@ export function CommunicationPage() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* ── Compose area ── */}
+              {/* Compose area */}
               <div className="px-4 py-3 shrink-0" style={{ borderTop: `1px solid ${G.border}`, background: G.white }}>
                 {selected.channel !== 'internal' && (
                   <div className="flex items-center gap-1.5 mb-2 rounded-xl px-2.5 py-1.5"
@@ -449,9 +456,9 @@ export function CommunicationPage() {
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                     placeholder={
                       selected.channel === 'internal' ? 'Type a message to your team… (Enter to send)' :
-                      selected.channel === 'whatsapp' ? 'Type a WhatsApp message…' :
-                      selected.channel === 'email' ? 'Type your email reply…' :
-                      'Type a portal message…'
+                        selected.channel === 'whatsapp' ? 'Type a WhatsApp message…' :
+                          selected.channel === 'email' ? 'Type your email reply…' :
+                            'Type a portal message…'
                     }
                     className="flex-1 resize-none rounded-xl px-3 py-2 text-sm outline-none bg-transparent"
                     style={{ color: G.primary }}
