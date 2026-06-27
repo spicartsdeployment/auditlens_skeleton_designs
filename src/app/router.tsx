@@ -19,7 +19,6 @@ const TDSPage              = lazy(() => import('@/features/tds/TDSPage').then(m 
 const AuditPage            = lazy(() => import('@/features/audit/AuditPage').then(m => ({ default: m.AuditPage })))
 const CommunicationPage    = lazy(() => import('@/features/communication/CommunicationPage').then(m => ({ default: m.CommunicationPage })))
 const DocumentsPage        = lazy(() => import('@/features/documents/DocumentsPage').then(m => ({ default: m.DocumentsPage })))
-const ReportsPage          = lazy(() => import('@/features/reports/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const NoticesPage          = lazy(() => import('@/features/notices/NoticesPage').then(m => ({ default: m.NoticesPage })))
 const WorkCenterPage       = lazy(() => import('@/features/workcenter/WorkCenterPage').then(m => ({ default: m.WorkCenterPage })))
 const SettingsPage         = lazy(() => import('@/features/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
@@ -92,11 +91,6 @@ export const router = createBrowserRouter([
           },
           { path: 'documents', element: <Lazy><DocumentsPage /></Lazy> },
           { path: 'calendar', element: <Navigate to="/" replace /> },
-          {
-            path: 'reports',
-            element: <ProtectedRoute screen="reports" />,
-            children: [{ index: true, element: <Lazy><ReportsPage /></Lazy> }],
-          },
           { path: 'notices', element: <Navigate to="/workcenter" replace /> },
           { path: 'settings', element: <Lazy><SettingsPage /></Lazy> },
           { path: '403', element: <Lazy><ForbiddenPage /></Lazy> },

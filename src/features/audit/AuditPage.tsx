@@ -4,7 +4,7 @@ import {
   AlertTriangle, Clock, Users, Activity, FileCheck, Folder, MessageSquare, Eye,
   PenLine, BarChart2, Shield, Search, Upload, Paperclip, AlertCircle, TrendingUp,
   RefreshCw, XCircle, CheckSquare, Circle, MoreHorizontal, ArrowRight,
-  ClipboardList, Star, Zap
+  ClipboardList, Star, Zap, Settings
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -1047,25 +1047,41 @@ const AUDIT_TYPES = [
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export function AuditPage() {
   const [selectedId, setSelectedId] = useState(1)
-  const [expandedStage, setExpandedStage] = useState<StageId | null>('planning')
+  const [activeStage, setActiveStage] = useState<StageId>('planning')
   const [showEngSearch, setShowEngSearch] = useState(false)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [auditType, setAuditType] = useState(ENGAGEMENTS[0].type)
+  const [selectedFY, setSelectedFY] = useState('FY 2025-26')
+  const [periodFrom, setPeriodFrom] = useState('2025-04')
+  const [periodTo, setPeriodTo] = useState('2026-03')
+  const [showTabSettings, setShowTabSettings] = useState(false)
+  const [visibleStages, setVisibleStages] = useState<Set<StageId>>(
+    new Set(STAGES.map(s => s.id as StageId))
+  )
+
+  function toggleStageVisibility(id: StageId) {
+    setVisibleStages(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        if (next.size === 1) return prev // keep at least one
+        next.delete(id)
+        // if active tab is hidden, switch to first visible
+        if (activeStage === id) {
+          const first = STAGES.find(s => next.has(s.id as StageId))
+          if (first) setActiveStage(first.id as StageId)
+        }
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   const eng = ENGAGEMENTS.find(e => e.id === selectedId) ?? ENGAGEMENTS[0]
   const stageStatus = STAGE_STATUS[selectedId] ?? STAGE_STATUS[1]
 
   // Resolve whether this is a Tax Audit for CARO/Form3CD switching
   const isTaxAudit = auditType === 'Tax Audit' || auditType === 'Tax Audit (u/s 44AB)'
-
-  function toggleStage(id: StageId) {
-    setExpandedStage(prev => prev === id ? null : id)
-    // Scroll into view
-    setTimeout(() => {
-      document.getElementById(`stage-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 80)
-  }
-
   const statusColors: Record<string, string> = {
     'In Progress': G.accent, 'Planning': '#F59E0B', 'Review': '#8B5CF6', 'Completed': '#10B981',
   }
@@ -1088,7 +1104,6 @@ export function AuditPage() {
                 <Search className="h-3.5 w-3.5 shrink-0" style={{ color: G.muted }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: G.primary }}>{eng.client}</p>
-                  <p className="text-[10px]" style={{ color: G.secondary }}>PAN: {eng.pan} · GSTIN: {eng.gstin}</p>
                 </div>
                 <ChevronDown className="h-3.5 w-3.5 shrink-0" style={{ color: G.muted }} />
               </button>
@@ -1098,11 +1113,10 @@ export function AuditPage() {
                   {ENGAGEMENTS.map(e => (
                     <button key={e.id} className="w-full flex items-start gap-3 px-4 py-3 text-left hover:opacity-80 transition-opacity"
                       style={{ borderBottom: `1px solid ${G.border}` }}
-                      onClick={() => { setSelectedId(e.id); setAuditType(e.type); setShowEngSearch(false); setExpandedStage('planning') }}>
+                      onClick={() => { setSelectedId(e.id); setAuditType(e.type); setShowEngSearch(false); setActiveStage('planning') }}>
                       <div>
                         <p className="text-sm font-semibold" style={{ color: G.primary }}>{e.client}</p>
                         <p className="text-[10px]" style={{ color: G.secondary }}>{e.type} · {e.fy}</p>
-                        <p className="text-[10px]" style={{ color: G.muted }}>PAN: {e.pan} · GSTIN: {e.gstin}</p>
                       </div>
                     </button>
                   ))}
@@ -1149,19 +1163,47 @@ export function AuditPage() {
             </div>
           </div>
 
-          {/* Meta pills — FY, Period, Due (Type removed — now a dropdown above) */}
-          <div className="flex flex-wrap gap-3 items-start">
-            {[
-              { label: 'FY', value: eng.fy },
-              { label: 'Period', value: eng.period },
-              { label: 'Due', value: eng.dueDate },
-            ].map(m => (
-              <div key={m.label} className="rounded-xl px-3 py-2" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
-                <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: G.muted }}>{m.label}</p>
-                <p className="text-sm font-semibold" style={{ color: G.primary }}>{m.value}</p>
-              </div>
-            ))}
-            {/* Status */}
+          {/* FY selector */}
+          <div className="shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>Financial Year</p>
+            <select
+              value={selectedFY}
+              onChange={e => setSelectedFY(e.target.value)}
+              className="rounded-xl px-3 py-2 text-sm font-semibold appearance-none cursor-pointer focus:outline-none"
+              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.primary, minWidth: 130 }}
+            >
+              {['FY 2025-26','FY 2024-25','FY 2023-24','FY 2022-23'].map(fy => (
+                <option key={fy} value={fy}>{fy}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Period From */}
+          <div className="shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>From</p>
+            <input
+              type="month"
+              value={periodFrom}
+              onChange={e => setPeriodFrom(e.target.value)}
+              className="rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none cursor-pointer"
+              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.primary }}
+            />
+          </div>
+
+          {/* Period To */}
+          <div className="shrink-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>To</p>
+            <input
+              type="month"
+              value={periodTo}
+              onChange={e => setPeriodTo(e.target.value)}
+              className="rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none cursor-pointer"
+              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.primary }}
+            />
+          </div>
+
+          {/* Status + Team */}
+          <div className="flex items-center gap-3">
             <div className="rounded-xl px-3 py-2" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
               <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>Status</p>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold"
@@ -1169,14 +1211,6 @@ export function AuditPage() {
                   border: `1px solid ${(statusColors[eng.status] ?? G.muted)}44` }}>
                 {eng.status}
               </span>
-            </div>
-          </div>
-
-          {/* Health + Team */}
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl px-3 py-2 text-center" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
-              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: G.muted }}>Health Score</p>
-              <p className="text-xl font-bold" style={{ color: eng.healthScore >= 75 ? '#10B981' : '#F59E0B' }}>{eng.healthScore}</p>
             </div>
             <div className="rounded-xl px-3 py-2" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
               <p className="text-[10px] font-bold uppercase tracking-wide mb-1.5" style={{ color: G.muted }}>Team</p>
@@ -1187,11 +1221,6 @@ export function AuditPage() {
                     style={{ background: m.color }}>{m.initials}</div>
                 ))}
               </div>
-            </div>
-            {/* Overall progress */}
-            <div className="rounded-xl px-3 py-2" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
-              <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>Progress</p>
-              <Pct value={eng.progress} />
             </div>
           </div>
 
@@ -1221,90 +1250,199 @@ export function AuditPage() {
         </div>
       </div>
 
-      {/* ── Workflow Navigator ─────────────────────────────────────────────── */}
-      <div className="rounded-2xl mb-3 px-4 py-3" style={{ background: G.white, border: `1px solid ${G.border}` }}>
-        <div className="flex items-center gap-1 overflow-x-auto pb-1">
-          {STAGES.map((stage, idx) => {
-            const s = stageStatus[stage.id]
-            const isActive = expandedStage === stage.id
-            const isDone = s?.done
-            const hasIssue = (s?.exceptions ?? 0) > 0
-            const hasPending = (s?.pending ?? 0) > 0
-            const SIcon = stage.icon
-            return (
-              <div key={stage.id} className="flex items-center gap-0.5 shrink-0">
+      {/* ── Stage Tab Bar + Content ─────────────────────────────────────── */}
+      <div className="rounded-2xl" style={{ background: G.white, border: `1px solid ${G.border}`, boxShadow: '0 1px 4px rgba(15,23,42,0.07)' }}>
+
+        {/* Tab strip row */}
+        <div className="flex items-stretch rounded-t-2xl" style={{ background: G.canvas, borderBottom: `1px solid ${G.border}` }}>
+
+          {/* Scrollable tabs */}
+          <div className="flex items-end overflow-x-auto flex-1 px-3" style={{ gap: 2, minHeight: 48 }}>
+            {STAGES.filter(stage => visibleStages.has(stage.id as StageId)).map((stage) => {
+              const s = stageStatus[stage.id]
+              const isActive = activeStage === stage.id
+              const isDone = s?.done
+              const hasIssue = (s?.exceptions ?? 0) > 0
+              const hasPending = (s?.pending ?? 0) > 0
+              const SIcon = stage.icon
+              const label = stage.id === 'caro' ? (isTaxAudit ? 'Form 3CD' : 'CARO') : stage.label
+              const dotColor = isDone ? '#10B981' : hasIssue ? '#EF4444' : hasPending ? '#F59E0B' : s && s.pct > 0 ? G.accent : 'transparent'
+
+              return (
                 <button
-                  onClick={() => toggleStage(stage.id as StageId)}
-                  className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all min-w-[80px]"
+                  key={stage.id}
+                  onClick={() => setActiveStage(stage.id as StageId)}
+                  className="relative flex items-center gap-1.5 px-4 shrink-0 transition-all focus:outline-none"
                   style={{
-                    background: isActive ? G.accent + '15' : G.canvas,
-                    border: `1px solid ${isActive ? G.accent : isDone ? '#10B98133' : G.border}`,
+                    height: isActive ? 44 : 38,
+                    marginTop: isActive ? 0 : 6,
+                    background: isActive ? G.white : 'transparent',
+                    borderRadius: '10px 10px 0 0',
+                    border: isActive ? `1px solid ${G.border}` : '1px solid transparent',
+                    borderBottom: isActive ? `2px solid ${G.accent}` : '1px solid transparent',
+                    color: isActive ? G.accent : G.secondary,
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: 11,
+                    zIndex: isActive ? 2 : 1,
                   }}
                 >
-                  <div className="relative">
-                    <SIcon className="h-4 w-4" style={{ color: isActive ? G.accent : isDone ? '#10B981' : hasPending ? '#F59E0B' : G.muted }} />
-                    {hasIssue && <div className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />}
-                  </div>
-                  <span className="text-[9px] font-semibold text-center leading-tight"
-                    style={{ color: isActive ? G.accent : G.secondary }}>
-                    {stage.id === 'caro' ? (isTaxAudit ? 'Form 3CD' : 'CARO') : stage.label}
-                  </span>
-                  {s && <Pct value={s.pct} />}
+                  <SIcon className="h-3.5 w-3.5 shrink-0" style={{ color: isActive ? G.accent : G.muted }} />
+                  <span className="whitespace-nowrap">{label}</span>
+                  {dotColor !== 'transparent' && (
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: dotColor }} />
+                  )}
                 </button>
-                {idx < STAGES.length - 1 && (
-                  <ChevronRight className="h-3 w-3 shrink-0" style={{ color: G.border }} />
-                )}
+              )
+            })}
+          </div>
+
+          {/* Gear button — outside scroll area so popover never gets clipped */}
+          <div className="relative shrink-0 flex items-center px-3" style={{ borderLeft: `1px solid ${G.border}` }}>
+            <button
+              onClick={() => setShowTabSettings(v => !v)}
+              title="Customize visible tabs"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all"
+              style={{
+                background: showTabSettings ? G.accent + '15' : G.white,
+                border: `1px solid ${showTabSettings ? G.accent : G.border}`,
+                color: showTabSettings ? G.accent : G.secondary,
+              }}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold">Tabs</span>
+            </button>
+
+            {/* Settings popover */}
+            {showTabSettings && (
+              <div
+                className="absolute right-0 top-full mt-2 z-50 rounded-2xl shadow-xl"
+                style={{ background: G.white, border: `1px solid ${G.border}`, width: 260 }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${G.border}` }}>
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: G.primary }}>Customize Tabs</p>
+                    <p className="text-[10px]" style={{ color: G.muted }}>Toggle which stages appear in the tab bar</p>
+                  </div>
+                  <button
+                    onClick={() => setShowTabSettings(false)}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg transition-colors"
+                    style={{ background: G.canvas, color: G.muted }}>
+                    <XCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Stage toggles */}
+                <div className="p-2">
+                  {STAGES.map(stage => {
+                    const isOn = visibleStages.has(stage.id as StageId)
+                    const SIcon = stage.icon
+                    const label = stage.id === 'caro' ? (isTaxAudit ? 'Form 3CD' : 'CARO') : stage.label
+                    return (
+                      <button
+                        key={stage.id}
+                        onClick={() => toggleStageVisibility(stage.id as StageId)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all"
+                        style={{ background: isOn ? G.accent + '08' : 'transparent' }}
+                      >
+                        <SIcon className="h-3.5 w-3.5 shrink-0" style={{ color: isOn ? G.accent : G.muted }} />
+                        <span className="flex-1 text-xs font-medium text-left" style={{ color: isOn ? G.primary : G.muted }}>{label}</span>
+                        <div className="relative h-4 w-7 rounded-full transition-all shrink-0"
+                          style={{ background: isOn ? G.accent : G.border }}>
+                          <div className="absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-all"
+                            style={{ left: isOn ? '14px' : '2px' }} />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: `1px solid ${G.border}` }}>
+                  <button
+                    onClick={() => setVisibleStages(new Set(STAGES.map(s => s.id as StageId)))}
+                    className="text-[11px] font-semibold"
+                    style={{ color: G.accent }}>
+                    Show All
+                  </button>
+                  <span className="text-[10px]" style={{ color: G.muted }}>{visibleStages.size} of {STAGES.length} shown</span>
+                </div>
               </div>
-            )
-          })}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ── Main Layout: stages + right panel ─────────────────────────────── */}
-      <div className="flex gap-3 items-start">
-
-        {/* Stage cards */}
-        <div className="flex-1 min-w-0 space-y-2">
-          {STAGES.map(stage => {
-            const s = stageStatus[stage.id] ?? { pct: 0, pending: 0, exceptions: 0, done: false }
-            const SIcon = stage.icon
-            const isExpanded = expandedStage === stage.id
-            // Dynamic label for CARO/Form3CD stage
-            const stageLabel = stage.id === 'caro'
+        {/* Tab content panel */}
+        <div className="p-5" style={{ background: G.white }}>
+          {(() => {
+            const s = stageStatus[activeStage] ?? { pct: 0, pending: 0, exceptions: 0, done: false }
+            const stage = STAGES.find(st => st.id === activeStage)!
+            const stageLabel = activeStage === 'caro'
               ? (isTaxAudit ? 'Form 3CD Verification' : 'CARO 2020 Verification')
               : stage.label
+
             return (
-              <SectionCard
-                key={stage.id}
-                id={stage.id}
-                label={stageLabel}
-                icon={SIcon}
-                stage={s}
-                expanded={isExpanded}
-                onToggle={() => toggleStage(stage.id as StageId)}
-              >
-                {stage.id === 'planning'         && <PlanningContent eng={eng} />}
-                {stage.id === 'questionnaires'   && <QuestionnaireContent />}
-                {stage.id === 'doc_requests'     && <DocRequestsContent />}
-                {stage.id === 'risk_assessment'  && <RiskContent />}
-                {stage.id === 'gst_verification' && <GSTVerifContent />}
-                {stage.id === 'tds_verification' && <TDSVerifContent />}
-                {stage.id === 'caro'             && <CAROContent auditType={auditType} />}
-                {stage.id === 'working_papers'   && <WorkingPapersContent />}
-                {stage.id === 'observations'     && <ObservationsContent />}
-                {stage.id === 'mgmt_responses'   && <MgmtResponsesContent />}
-                {stage.id === 'review'           && <ReviewContent />}
-                {stage.id === 'signoff'          && <SignOffContent />}
-              </SectionCard>
+              <>
+                {/* Stage header */}
+                <div className="flex items-center gap-3 mb-5 pb-4" style={{ borderBottom: `1px solid ${G.border}` }}>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: s.done ? '#F0FDF4' : s.pct > 0 ? '#EFF8FF' : G.canvas, border: `1px solid ${s.done ? '#10B98133' : s.pct > 0 ? G.accent + '33' : G.border}` }}>
+                    <stage.icon className="h-4 w-4" style={{ color: s.done ? '#10B981' : s.pct > 0 ? G.accent : G.muted }} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold" style={{ color: G.primary }}>{stageLabel}</h3>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <Pct value={s.pct} />
+                      {s.done && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#F0FDF4', color: '#10B981' }}>Complete</span>}
+                      {s.pending > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#FFFBEB', color: '#92400E' }}>{s.pending} pending</span>}
+                      {s.exceptions > 0 && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#FEF2F2', color: '#991B1B' }}>{s.exceptions} exceptions</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const visibleList = STAGES.filter(s => visibleStages.has(s.id as StageId))
+                      const idx = visibleList.findIndex(s => s.id === activeStage)
+                      return (
+                        <>
+                          {idx > 0 && (
+                            <button
+                              onClick={() => setActiveStage(visibleList[idx - 1].id as StageId)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                              style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
+                              ← Prev
+                            </button>
+                          )}
+                          {idx < visibleList.length - 1 && (
+                            <button
+                              onClick={() => setActiveStage(visibleList[idx + 1].id as StageId)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all"
+                              style={{ background: G.accent }}>
+                              Next →
+                            </button>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+                </div>
+
+                {/* Stage body */}
+                {activeStage === 'planning'         && <PlanningContent eng={eng} />}
+                {activeStage === 'questionnaires'   && <QuestionnaireContent />}
+                {activeStage === 'doc_requests'     && <DocRequestsContent />}
+                {activeStage === 'risk_assessment'  && <RiskContent />}
+                {activeStage === 'gst_verification' && <GSTVerifContent />}
+                {activeStage === 'tds_verification' && <TDSVerifContent />}
+                {activeStage === 'caro'             && <CAROContent auditType={auditType} />}
+                {activeStage === 'working_papers'   && <WorkingPapersContent />}
+                {activeStage === 'observations'     && <ObservationsContent />}
+                {activeStage === 'mgmt_responses'   && <MgmtResponsesContent />}
+                {activeStage === 'review'           && <ReviewContent />}
+                {activeStage === 'signoff'          && <SignOffContent />}
+              </>
             )
-          })}
+          })()}
         </div>
-
-        {/* Sticky right panel */}
-        <div className="hidden xl:block w-64 shrink-0 sticky top-4">
-          <RightPanel eng={eng} stageStatus={stageStatus} />
-        </div>
-
       </div>
     </div>
   )

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Briefcase, CheckSquare, MessageSquare,
   FileText, ReceiptText, Scale, Settings, Layers, FolderOpen,
-  BarChart3, ShieldAlert, ChevronLeft, ChevronRight, Cpu,
+  ShieldAlert, ChevronLeft, ChevronRight, Cpu,
 } from 'lucide-react'
 import { cn } from '@/shared/components/cn'
 import { usePermission } from '@/shared/hooks/usePermission'
@@ -17,7 +17,6 @@ const NAV_ITEMS = [
   { to: '/documents', label: 'Documents', icon: FolderOpen, screen: 'documents', group: 'management' },
   { to: '/users', label: 'User Management', icon: Users, screen: 'users', group: 'management' },
   { to: '/communication', label: 'Communication', icon: MessageSquare, screen: 'communication', group: 'tools' },
-  { to: '/reports', label: 'Reports', icon: BarChart3, screen: 'reports', group: 'tools' },
   { to: '/settings', label: 'Settings', icon: Settings, screen: 'subscription', group: 'system' },
 ]
 
