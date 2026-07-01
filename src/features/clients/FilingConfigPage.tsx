@@ -1,1090 +1,1256 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import {
-  Eye, EyeOff, Plus, X, ChevronDown, ChevronUp,
-} from 'lucide-react'
-import { G, PageHeader } from '@/shared/components/GrayKpi'
-import { MOCK_CLIENTS, MOCK_USERS } from '@/mock/data'
+import { Settings, ChevronDown, Plus, X, Check, Info } from 'lucide-react'
+import { cn } from '@/shared/components/cn'
+import { MOCK_CLIENTS, MOCK_USERS, MOCK_TDS_RETURNS } from '@/mock/data'
 
-// ── Types ─────────────────────────────────────────────────
+const G = {
+  canvas:    '#F8FAFC',
+  white:     '#FFFFFF',
+  border:    '#E2E8F0',
+  muted:     '#94A3B8',
+  secondary: '#475569',
+  primary:   '#0F172A',
+  accent:    '#0584C7',
+} as const
 
-interface GSTConfig {
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type GSTReturnType = 'GSTR-1' | 'GSTR-1A' | 'GSTR-3B' | 'GSTR-9' | 'GSTR-9C'
+type TDSFormType = '24Q' | '26Q' | '27Q' | '27EQ'
+type FilingFrequency = 'Monthly' | 'Quarterly' | 'Annually'
+type AuditType = 'Statutory Audit' | 'Tax Audit' | 'Internal Audit' | 'Concurrent Audit'
+type ReportingStandard = 'Ind AS' | 'AS' | 'IFRS'
+type FYEnd = 'March 31' | 'December 31' | 'September 30'
+
+interface GSTINConfig {
   gstin: string
   state: string
-  registrationType: string
-  returns: string[]
-  frequency: string
+  applicableReturns: GSTReturnType[]
+  frequency: FilingFrequency
   eInvoicing: boolean
   lut: boolean
-  reverseCharge: boolean
-  sezTaxpayer: boolean
   portalUsername: string
-  portalPassword: string
-  reviewer: string
-  approver: string
+  reviewerId: string
+  approverId: string
 }
 
-interface TDSConfig {
+interface TANConfig {
   tan: string
-  forms: string[]
-  frequency: string
-  salaryTds: boolean
-  vendorTds: boolean
-  contractorTds: boolean
+  applicableForms: TDSFormType[]
+  frequency: 'Quarterly'
+  salaryTDS: boolean
+  vendorTDS: boolean
+  contractorTDS: boolean
   payrollIntegration: boolean
-  reviewer: string
-  approver: string
+  reviewerId: string
+  approverId: string
 }
 
 interface AuditTypeConfig {
   enabled: boolean
-  partner: string
-  manager: string
-  targetMonth: string
-  previousAuditor: string
-  reportingStandard: string
+  engagementPartnerId: string
+  engagementManagerId: string
+  targetCompletionMonth: string
+  previousAuditorName: string
+  reportingStandard: ReportingStandard
 }
 
 interface AuditConfig {
-  statutory: AuditTypeConfig
-  tax: AuditTypeConfig
-  internal: AuditTypeConfig
-  concurrent: AuditTypeConfig
-  fyEnd: string
-  periodFrom: string
-  periodTo: string
-  leadPartnerSignoff: boolean
-  qualityReview: boolean
-  qrReviewer: string
-  managementLetter: boolean
+  types: Record<AuditType, AuditTypeConfig>
+  fyEnd: FYEnd
+  auditPeriodFrom: string
+  auditPeriodTo: string
 }
 
-// ── Helpers ───────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const inputStyle: React.CSSProperties = {
-  border: `1px solid ${G.border}`,
-  background: G.white,
-  color: G.primary,
+const GST_RETURN_TYPES: GSTReturnType[] = ['GSTR-1', 'GSTR-1A', 'GSTR-3B', 'GSTR-9', 'GSTR-9C']
+const TDS_FORM_TYPES: TDSFormType[] = ['24Q', '26Q', '27Q', '27EQ']
+const AUDIT_TYPES: AuditType[] = ['Statutory Audit', 'Tax Audit', 'Internal Audit', 'Concurrent Audit']
+
+const STATE_CODES: Record<string, string> = {
+  '27': 'Maharashtra', '07': 'Delhi', '29': 'Karnataka', '33': 'Tamil Nadu',
+  '19': 'West Bengal', '24': 'Gujarat', '06': 'Haryana', '09': 'Uttar Pradesh',
+  '08': 'Rajasthan', '36': 'Telangana', '32': 'Kerala', '23': 'Madhya Pradesh',
 }
 
-const sectionLabel = 'text-xs font-semibold uppercase tracking-wide mb-2'
-
-function Divider() {
-  return <div style={{ borderTop: `1px solid ${G.border}`, margin: '16px 0' }} />
+function getStateFromGSTIN(gstin: string): string {
+  const code = gstin.substring(0, 2)
+  return STATE_CODES[code] ?? 'Unknown'
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className={sectionLabel} style={{ color: G.icon }}>{children}</p>
+function defaultGSTINConfig(gstin: string): GSTINConfig {
+  return {
+    gstin,
+    state: getStateFromGSTIN(gstin),
+    applicableReturns: [],
+    frequency: 'Monthly',
+    eInvoicing: false,
+    lut: false,
+    portalUsername: '',
+    reviewerId: '',
+    approverId: '',
+  }
 }
 
-// iOS-style toggle switch
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function defaultTANConfig(tan: string): TANConfig {
+  return {
+    tan,
+    applicableForms: [],
+    frequency: 'Quarterly',
+    salaryTDS: false,
+    vendorTDS: false,
+    contractorTDS: false,
+    payrollIntegration: false,
+    reviewerId: '',
+    approverId: '',
+  }
+}
+
+function defaultAuditTypeConfig(): AuditTypeConfig {
+  return {
+    enabled: false,
+    engagementPartnerId: '',
+    engagementManagerId: '',
+    targetCompletionMonth: '',
+    previousAuditorName: '',
+    reportingStandard: 'Ind AS',
+  }
+}
+
+function defaultAuditConfig(): AuditConfig {
+  return {
+    types: {
+      'Statutory Audit': defaultAuditTypeConfig(),
+      'Tax Audit': defaultAuditTypeConfig(),
+      'Internal Audit': defaultAuditTypeConfig(),
+      'Concurrent Audit': defaultAuditTypeConfig(),
+    },
+    fyEnd: 'March 31',
+    auditPeriodFrom: '',
+    auditPeriodTo: '',
+  }
+}
+
+// Seed mock data for Sunrise Textiles
+const SUNRISE_CLIENT_ID = MOCK_CLIENTS[0]?.id ?? 1
+const PRIYA_ID = String(MOCK_USERS.find(u => u.full_name === 'Priya Sharma')?.id ?? '')
+const ARJUN_ID = String(MOCK_USERS.find(u => u.full_name === 'Arjun Mehta')?.id ?? '')
+
+function clientDisplayName(c: (typeof MOCK_CLIENTS)[number]) {
+  return c.trade_name ?? c.legal_name
+}
+
+function seedGSTForClient(clientId: number): GSTINConfig[] {
+  const client = MOCK_CLIENTS.find(c => c.id === clientId)
+  if (!client?.gstin) return []
+  const config = defaultGSTINConfig(client.gstin)
+  if (clientId === SUNRISE_CLIENT_ID) {
+    config.applicableReturns = ['GSTR-1', 'GSTR-3B', 'GSTR-9']
+    config.frequency = 'Monthly'
+    config.eInvoicing = true
+    config.lut = false
+    config.portalUsername = 'sunrise_gst'
+    config.reviewerId = PRIYA_ID
+    config.approverId = ARJUN_ID
+  }
+  return [config]
+}
+
+function seedTDSForClient(clientId: number): TANConfig[] {
+  const existing = MOCK_TDS_RETURNS.filter(r => r.client_id === clientId)
+  if (existing.length > 0 && clientId !== SUNRISE_CLIENT_ID) {
+    const forms = [...new Set(existing.map(r => r.return_type))].filter(
+      (f): f is TDSFormType => TDS_FORM_TYPES.includes(f as TDSFormType)
+    )
+    const config = defaultTANConfig('DELS12345A')
+    config.applicableForms = forms
+    return [config]
+  }
+  // Fallback mock TAN for Sunrise Textiles
+  if (clientId === SUNRISE_CLIENT_ID) {
+    const config = defaultTANConfig('DELS12345A')
+    config.applicableForms = ['24Q', '26Q']
+    config.salaryTDS = true
+    config.vendorTDS = true
+    config.contractorTDS = false
+    config.reviewerId = PRIYA_ID
+    config.approverId = ARJUN_ID
+    return [config]
+  }
+  return []
+}
+
+function seedAuditForClient(clientId: number): AuditConfig {
+  const config = defaultAuditConfig()
+  if (clientId === SUNRISE_CLIENT_ID) {
+    config.types['Statutory Audit'].enabled = true
+    config.types['Statutory Audit'].engagementPartnerId = ARJUN_ID
+    config.types['Statutory Audit'].engagementManagerId = PRIYA_ID
+    config.types['Statutory Audit'].reportingStandard = 'Ind AS'
+  }
+  return config
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+interface ToggleSwitchProps {
+  checked: boolean
+  onChange: (val: boolean) => void
+  label?: string
+  tooltip?: string
+}
+
+function ToggleSwitch({ checked, onChange, label, tooltip }: ToggleSwitchProps) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!on)}
-      style={{
-        width: 36, height: 20, borderRadius: 10,
-        background: on ? '#0584C7' : G.border,
-        position: 'relative',
-        border: 'none',
-        cursor: 'pointer',
-        transition: 'background 0.2s',
-        flexShrink: 0,
-      }}
-      aria-pressed={on}
-    >
-      <span style={{
-        position: 'absolute', top: 2,
-        width: 16, height: 16, borderRadius: '50%',
-        background: G.white,
-        transform: on ? 'translateX(16px)' : 'translateX(2px)',
-        transition: 'transform 0.2s',
-        display: 'block',
-      }} />
-    </button>
-  )
-}
-
-function ToggleRow({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center gap-3">
-      <Toggle on={on} onChange={onChange} />
-      <span className="text-xs font-medium" style={{ color: G.secondary }}>{label}</span>
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        style={{
+          width: 36,
+          height: 20,
+          borderRadius: 999,
+          backgroundColor: checked ? G.accent : '#CBD5E1',
+          position: 'relative',
+          border: 'none',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 2,
+            left: checked ? 18 : 2,
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            backgroundColor: G.white,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            transition: 'left 0.2s',
+          }}
+        />
+      </button>
+      {label && (
+        <span className="text-sm" style={{ color: G.secondary }}>
+          {label}
+        </span>
+      )}
+      {tooltip && (
+        <span title={tooltip}>
+          <Info size={14} style={{ color: G.muted }} />
+        </span>
+      )}
     </div>
   )
 }
 
-// Pill toggle for multi-select
-function PillToggle({ label, active, onChange }: { label: string; active: boolean; onChange: () => void }) {
+interface PillToggleProps {
+  label: string
+  active: boolean
+  onClick: () => void
+}
+
+function PillToggle({ label, active, onClick }: PillToggleProps) {
   return (
     <button
       type="button"
-      onClick={onChange}
-      className="rounded-full px-3 py-1 text-xs font-semibold border cursor-pointer transition-all"
-      style={{
-        background: active ? '#0584C7' : G.canvas,
-        color: active ? G.white : G.secondary,
-        border: active ? '1px solid transparent' : `1px solid ${G.border}`,
-      }}
+      onClick={onClick}
+      className="rounded-full px-3 py-1 text-xs font-semibold border transition-all"
+      style={
+        active
+          ? { backgroundColor: G.accent, color: G.white, borderColor: 'transparent' }
+          : { backgroundColor: G.canvas, color: G.secondary, borderColor: G.border }
+      }
     >
       {label}
     </button>
   )
 }
 
-// User select (admin + super_admin only)
-const adminUsers = MOCK_USERS.filter(u => u.role === 'admin' || u.role === 'super_admin')
-
-function UserSelect({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-  return (
-    <div className="flex-1 min-w-0">
-      <SectionLabel>{label}</SectionLabel>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-        style={inputStyle}
-      >
-        <option value="">— Select —</option>
-        {adminUsers.map(u => (
-          <option key={u.id} value={String(u.id)}>{u.full_name}</option>
-        ))}
-      </select>
-    </div>
-  )
+interface SelectFieldProps {
+  label: string
+  value: string
+  onChange: (val: string) => void
+  options: { value: string; label: string }[]
 }
 
-// ── GST Card ──────────────────────────────────────────────
-
-const GST_RETURNS = ['GSTR-1', 'GSTR-1A', 'GSTR-3B', 'GSTR-9', 'GSTR-9C']
-
-function GSTCard({ config, onChange, onSave }: {
-  config: GSTConfig
-  onChange: (c: GSTConfig) => void
-  onSave: () => void
-}) {
-  const [showPwd, setShowPwd] = useState(false)
-
-  function toggleReturn(r: string) {
-    const next = config.returns.includes(r)
-      ? config.returns.filter(x => x !== r)
-      : [...config.returns, r]
-    onChange({ ...config, returns: next })
-  }
-
+function SelectField({ label, value, onChange, options }: SelectFieldProps) {
   return (
-    <div className="rounded-2xl p-5 border mb-4" style={{ background: G.white, borderColor: G.border }}>
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-2 mb-1">
-        <span className="text-sm font-bold font-mono" style={{ color: G.primary }}>{config.gstin}</span>
-        <span className="rounded-full text-[10px] font-semibold px-2.5 py-0.5"
-          style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-          {config.state}
-        </span>
-        <span className="rounded-full text-[10px] font-semibold px-2.5 py-0.5"
-          style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
-          {config.registrationType}
-        </span>
-      </div>
-
-      <Divider />
-
-      {/* Return Types */}
-      <SectionLabel>Return Types Applicable</SectionLabel>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {GST_RETURNS.map(r => (
-          <PillToggle key={r} label={r} active={config.returns.includes(r)} onChange={() => toggleReturn(r)} />
-        ))}
-      </div>
-
-      {/* Filing Frequency */}
-      <SectionLabel>Filing Frequency</SectionLabel>
-      <select
-        value={config.frequency}
-        onChange={e => onChange({ ...config, frequency: e.target.value })}
-        className="rounded-xl border px-3 py-2 text-sm focus:outline-none mb-4"
-        style={inputStyle}
-      >
-        {['Monthly', 'Quarterly', 'Annually'].map(f => <option key={f}>{f}</option>)}
-      </select>
-
-      <Divider />
-
-      {/* Toggles */}
-      <SectionLabel>Applicable Settings</SectionLabel>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <ToggleRow label="E-Invoicing Applicable" on={config.eInvoicing} onChange={v => onChange({ ...config, eInvoicing: v })} />
-        <ToggleRow label="LUT Applicable" on={config.lut} onChange={v => onChange({ ...config, lut: v })} />
-        <ToggleRow label="Reverse Charge Applicable" on={config.reverseCharge} onChange={v => onChange({ ...config, reverseCharge: v })} />
-        <ToggleRow label="SEZ Taxpayer" on={config.sezTaxpayer} onChange={v => onChange({ ...config, sezTaxpayer: v })} />
-      </div>
-
-      <Divider />
-
-      {/* Portal Credentials */}
-      <SectionLabel>Portal Credentials</SectionLabel>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div>
-          <label className="text-[10px] font-medium mb-1 block" style={{ color: G.icon }}>Username</label>
-          <input
-            type="text"
-            value={config.portalUsername}
-            onChange={e => onChange({ ...config, portalUsername: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label className="text-[10px] font-medium mb-1 block" style={{ color: G.icon }}>Password</label>
-          <div className="relative">
-            <input
-              type={showPwd ? 'text' : 'password'}
-              value={config.portalPassword}
-              onChange={e => onChange({ ...config, portalPassword: e.target.value })}
-              className="w-full rounded-xl px-3 py-2 pr-9 text-sm focus:outline-none"
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd(v => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2"
-              style={{ color: G.icon }}
-            >
-              {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <Divider />
-
-      {/* Assignment */}
-      <SectionLabel>Default Assignment</SectionLabel>
-      <div className="flex gap-3 mb-4">
-        <UserSelect label="Default Reviewer" value={config.reviewer} onChange={v => onChange({ ...config, reviewer: v })} />
-        <UserSelect label="Default Approver" value={config.approver} onChange={v => onChange({ ...config, approver: v })} />
-      </div>
-
-      {/* Footer */}
-      <button
-        type="button"
-        onClick={onSave}
-        className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all"
-        style={{ background: G.primary }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#1E293B')}
-        onMouseLeave={e => (e.currentTarget.style.background = G.primary)}
-      >
-        Save Configuration
-      </button>
-    </div>
-  )
-}
-
-// ── TDS Card ──────────────────────────────────────────────
-
-const TDS_FORMS = ['24Q (Salary)', '26Q (Non-Salary)', '27Q (NRI)', '27EQ (TCS)']
-
-function TDSCard({ config, onChange, onSave }: {
-  config: TDSConfig
-  onChange: (c: TDSConfig) => void
-  onSave: () => void
-}) {
-  function toggleForm(f: string) {
-    const key = f.split(' ')[0]
-    const next = config.forms.includes(key)
-      ? config.forms.filter(x => x !== key)
-      : [...config.forms, key]
-    onChange({ ...config, forms: next })
-  }
-
-  return (
-    <div className="rounded-2xl p-5 border mb-4" style={{ background: G.white, borderColor: G.border }}>
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-sm font-bold font-mono" style={{ color: G.primary }}>TAN: {config.tan}</span>
-      </div>
-
-      <Divider />
-
-      {/* TDS Forms */}
-      <SectionLabel>Applicable TDS Forms</SectionLabel>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {TDS_FORMS.map(f => {
-          const key = f.split(' ')[0]
-          return (
-            <PillToggle key={f} label={f} active={config.forms.includes(key)} onChange={() => toggleForm(f)} />
-          )
-        })}
-      </div>
-
-      {/* Filing Frequency */}
-      <SectionLabel>Filing Frequency</SectionLabel>
-      <div className="mb-1">
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: G.muted }}>
+        {label}
+      </label>
+      <div className="relative">
         <select
-          value="Quarterly"
-          disabled
-          className="rounded-xl border px-3 py-2 text-sm focus:outline-none opacity-60"
-          style={inputStyle}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-400 pr-8"
         >
-          <option>Quarterly</option>
-        </select>
-      </div>
-      <p className="text-[10px] mb-4" style={{ color: G.icon }}>
-        TDS returns are filed quarterly as per Income Tax rules
-      </p>
-
-      <Divider />
-
-      {/* Toggles */}
-      <SectionLabel>TDS Category Settings</SectionLabel>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <ToggleRow label="Salary TDS (24Q)" on={config.salaryTds} onChange={v => onChange({ ...config, salaryTds: v })} />
-        <ToggleRow label="Vendor/Contractor TDS (26Q)" on={config.vendorTds} onChange={v => onChange({ ...config, vendorTds: v })} />
-        <ToggleRow label="Contractor TDS" on={config.contractorTds} onChange={v => onChange({ ...config, contractorTds: v })} />
-        <div className="flex items-center gap-3 relative group">
-          <Toggle
-            on={config.payrollIntegration}
-            onChange={v => {
-              if (v) toast.info('Payroll Integration — Coming Soon')
-              onChange({ ...config, payrollIntegration: false })
-            }}
-          />
-          <span className="text-xs font-medium" style={{ color: G.secondary }}>
-            Payroll Integration
-            <span className="ml-1 text-[10px]" style={{ color: G.icon }}>(Coming soon)</span>
-          </span>
-        </div>
-      </div>
-
-      <Divider />
-
-      {/* Assignment */}
-      <SectionLabel>Default Assignment</SectionLabel>
-      <div className="flex gap-3 mb-4">
-        <UserSelect label="Default Reviewer" value={config.reviewer} onChange={v => onChange({ ...config, reviewer: v })} />
-        <UserSelect label="Default Approver" value={config.approver} onChange={v => onChange({ ...config, approver: v })} />
-      </div>
-
-      <button
-        type="button"
-        onClick={onSave}
-        className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all"
-        style={{ background: G.primary }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#1E293B')}
-        onMouseLeave={e => (e.currentTarget.style.background = G.primary)}
-      >
-        Save Configuration
-      </button>
-    </div>
-  )
-}
-
-// ── Audit Sub-panel ───────────────────────────────────────
-
-function AuditSubPanel({ config, onChange }: {
-  config: AuditTypeConfig
-  onChange: (c: AuditTypeConfig) => void
-}) {
-  return (
-    <div className="mt-3 ml-12 rounded-xl p-4" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <SectionLabel>Engagement Partner</SectionLabel>
-          <select
-            value={config.partner}
-            onChange={e => onChange({ ...config, partner: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          >
-            <option value="">— Select —</option>
-            {adminUsers.map(u => <option key={u.id} value={String(u.id)}>{u.full_name}</option>)}
-          </select>
-        </div>
-        <div>
-          <SectionLabel>Engagement Manager</SectionLabel>
-          <select
-            value={config.manager}
-            onChange={e => onChange({ ...config, manager: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          >
-            <option value="">— Select —</option>
-            {MOCK_USERS.map(u => <option key={u.id} value={String(u.id)}>{u.full_name}</option>)}
-          </select>
-        </div>
-        <div>
-          <SectionLabel>Target Completion Month</SectionLabel>
-          <input
-            type="month"
-            value={config.targetMonth}
-            onChange={e => onChange({ ...config, targetMonth: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <SectionLabel>Previous Auditor Name</SectionLabel>
-          <input
-            type="text"
-            value={config.previousAuditor}
-            onChange={e => onChange({ ...config, previousAuditor: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-            placeholder="Firm name"
-          />
-        </div>
-        <div className="col-span-2">
-          <SectionLabel>Reporting Standard</SectionLabel>
-          <select
-            value={config.reportingStandard}
-            onChange={e => onChange({ ...config, reportingStandard: e.target.value })}
-            className="rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          >
-            <option value="Ind AS">Ind AS</option>
-            <option value="AS">AS (Accounting Standards)</option>
-            <option value="IFRS">IFRS</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Audit Tab ─────────────────────────────────────────────
-
-function AuditTab({ config, onChange, clientName }: {
-  config: AuditConfig
-  onChange: (c: AuditConfig) => void
-  clientName: string
-}) {
-  const auditTypes: { key: keyof Pick<AuditConfig, 'statutory' | 'tax' | 'internal' | 'concurrent'>; label: string }[] = [
-    { key: 'statutory', label: 'Statutory Audit' },
-    { key: 'tax', label: 'Tax Audit' },
-    { key: 'internal', label: 'Internal Audit' },
-    { key: 'concurrent', label: 'Concurrent Audit' },
-  ]
-
-  return (
-    <div className="rounded-2xl p-5 border" style={{ background: G.white, borderColor: G.border }}>
-      {/* Section 1: Audit Types */}
-      <p className="text-sm font-semibold mb-4" style={{ color: G.primary }}>Audit Types Applicable</p>
-      <div className="flex flex-col gap-3 mb-2">
-        {auditTypes.map(({ key, label }) => {
-          const atConfig = config[key]
-          return (
-            <div key={key}>
-              <div className="flex items-center gap-3">
-                <Toggle
-                  on={atConfig.enabled}
-                  onChange={v => onChange({ ...config, [key]: { ...atConfig, enabled: v } })}
-                />
-                <span className="text-sm font-medium" style={{ color: G.primary }}>{label}</span>
-                {atConfig.enabled
-                  ? <ChevronUp className="h-4 w-4 ml-auto" style={{ color: G.icon }} />
-                  : <ChevronDown className="h-4 w-4 ml-auto" style={{ color: G.icon }} />
-                }
-              </div>
-              {atConfig.enabled && (
-                <AuditSubPanel
-                  config={atConfig}
-                  onChange={v => onChange({ ...config, [key]: v })}
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      <Divider />
-
-      {/* Section 2: Financial Year & Period */}
-      <p className="text-sm font-semibold mb-3" style={{ color: G.primary }}>Financial Year & Period</p>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div>
-          <SectionLabel>Financial Year End</SectionLabel>
-          <select
-            value={config.fyEnd}
-            onChange={e => onChange({ ...config, fyEnd: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          >
-            <option value="March 31">March 31</option>
-            <option value="December 31">December 31</option>
-            <option value="September 30">September 30</option>
-          </select>
-        </div>
-        <div>
-          <SectionLabel>Audit Period From</SectionLabel>
-          <input
-            type="date"
-            value={config.periodFrom}
-            onChange={e => onChange({ ...config, periodFrom: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <SectionLabel>Audit Period To</SectionLabel>
-          <input
-            type="date"
-            value={config.periodTo}
-            onChange={e => onChange({ ...config, periodTo: e.target.value })}
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          />
-        </div>
-      </div>
-
-      <Divider />
-
-      {/* Section 3: Reporting Configuration */}
-      <p className="text-sm font-semibold mb-3" style={{ color: G.primary }}>Reporting Configuration</p>
-      <div className="flex flex-col gap-3 mb-4">
-        <ToggleRow
-          label="Lead Partner Sign-off Required"
-          on={config.leadPartnerSignoff}
-          onChange={v => onChange({ ...config, leadPartnerSignoff: v })}
-        />
-        <div>
-          <ToggleRow
-            label="Quality Review Required"
-            on={config.qualityReview}
-            onChange={v => onChange({ ...config, qualityReview: v })}
-          />
-          {config.qualityReview && (
-            <div className="mt-2 ml-12">
-              <SectionLabel>QR Reviewer</SectionLabel>
-              <select
-                value={config.qrReviewer}
-                onChange={e => onChange({ ...config, qrReviewer: e.target.value })}
-                className="rounded-xl px-3 py-2 text-sm focus:outline-none"
-                style={inputStyle}
-              >
-                <option value="">— Select —</option>
-                {adminUsers.map(u => <option key={u.id} value={String(u.id)}>{u.full_name}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-        <ToggleRow
-          label="Management Letter Required"
-          on={config.managementLetter}
-          onChange={v => onChange({ ...config, managementLetter: v })}
-        />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => toast.success(`Audit configuration saved for ${clientName}`)}
-        className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all"
-        style={{ background: G.primary }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#1E293B')}
-        onMouseLeave={e => (e.currentTarget.style.background = G.primary)}
-      >
-        Save All Audit Configuration
-      </button>
-    </div>
-  )
-}
-
-// ── Config Summary Panel ──────────────────────────────────
-
-function ConfigSummary({
-  clientName,
-  gstConfigs,
-  tdsConfigs,
-  auditConfig,
-}: {
-  clientName: string
-  gstConfigs: GSTConfig[]
-  tdsConfigs: TDSConfig[]
-  auditConfig: AuditConfig
-}) {
-  // Calculate completion: each section gets a point if reviewer+approver set
-  let completed = 0
-  let total = 0
-
-  gstConfigs.forEach(g => {
-    total++
-    if (g.reviewer && g.approver) completed++
-  })
-  tdsConfigs.forEach(t => {
-    total++
-    if (t.reviewer && t.approver) completed++
-  })
-  // Audit counts if at least one audit type enabled
-  total++
-  if (auditConfig.statutory.enabled || auditConfig.tax.enabled || auditConfig.internal.enabled || auditConfig.concurrent.enabled) {
-    completed++
-  }
-
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0
-
-  const gstEnabled = gstConfigs[0]
-  const tdsEnabled = tdsConfigs[0]
-
-  return (
-    <div className="rounded-2xl p-5 border" style={{ background: G.white, borderColor: G.border, boxShadow: '0 1px 3px 0 rgba(15,23,42,0.06)' }}>
-      <p className="text-sm font-bold mb-0.5" style={{ color: G.primary }}>{clientName || '— Select a client —'}</p>
-      <p className="text-[10px] mb-3" style={{ color: G.icon }}>Last updated: Just now</p>
-
-      <div style={{ borderTop: `1px solid ${G.border}`, marginBottom: 12 }} />
-
-      {/* GST */}
-      <p className="text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: G.secondary }}>GST</p>
-      {gstEnabled ? (
-        <div className="mb-3 text-xs" style={{ color: G.secondary }}>
-          <p>GSTINs configured: {gstConfigs.length}</p>
-          <p>Returns: {gstEnabled.returns.join(', ') || '—'}</p>
-          <p>Frequency: {gstEnabled.frequency}</p>
-          <p>E-Invoicing: {gstEnabled.eInvoicing ? '✓' : '✗'} | LUT: {gstEnabled.lut ? '✓' : '✗'}</p>
-        </div>
-      ) : (
-        <p className="text-xs mb-3" style={{ color: G.icon }}>Not configured</p>
-      )}
-
-      <div style={{ borderTop: `1px solid ${G.border}`, marginBottom: 12 }} />
-
-      {/* TDS */}
-      <p className="text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: G.secondary }}>TDS</p>
-      {tdsEnabled ? (
-        <div className="mb-3 text-xs" style={{ color: G.secondary }}>
-          <p>TANs configured: {tdsConfigs.length}</p>
-          <p>Forms: {tdsEnabled.forms.join(', ') || '—'}</p>
-          <p>Frequency: {tdsEnabled.frequency}</p>
-          <p>Salary TDS: {tdsEnabled.salaryTds ? '✓' : '✗'} | Vendor: {tdsEnabled.vendorTds ? '✓' : '✗'}</p>
-        </div>
-      ) : (
-        <p className="text-xs mb-3" style={{ color: G.icon }}>Not configured</p>
-      )}
-
-      <div style={{ borderTop: `1px solid ${G.border}`, marginBottom: 12 }} />
-
-      {/* Audit */}
-      <p className="text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: G.secondary }}>Audit</p>
-      <div className="mb-4 text-xs" style={{ color: G.secondary }}>
-        <p>Statutory: {auditConfig.statutory.enabled ? '✓' : '✗'}</p>
-        <p>Tax Audit: {auditConfig.tax.enabled ? '✓' : '✗'}</p>
-        <p>Internal: {auditConfig.internal.enabled ? '✓' : '✗'}</p>
-        <p>Concurrent: {auditConfig.concurrent.enabled ? '✓' : '✗'}</p>
-      </div>
-
-      <div style={{ borderTop: `1px solid ${G.border}`, marginBottom: 12 }} />
-
-      {/* Completion */}
-      <p className="text-[10px] font-semibold mb-1.5" style={{ color: G.icon }}>Configuration Completeness</p>
-      <div className="rounded-full h-2 overflow-hidden mb-1" style={{ background: G.border }}>
-        <div
-          className="h-2 rounded-full transition-all"
-          style={{ width: `${pct}%`, background: pct === 100 ? '#166534' : '#0584C7' }}
-        />
-      </div>
-      <p className="text-xs font-semibold tabular-nums" style={{ color: pct === 100 ? '#166534' : G.secondary }}>{pct}% Complete</p>
-    </div>
-  )
-}
-
-// ── Add GSTIN Inline Form ─────────────────────────────────
-
-function AddGSTINForm({ onAdd, onCancel }: {
-  onAdd: (gstin: string, state: string) => void
-  onCancel: () => void
-}) {
-  const [gstin, setGstin] = useState('')
-  const [state, setState] = useState('')
-
-  return (
-    <div className="rounded-2xl p-4 border mb-4" style={{ background: G.canvas, borderColor: G.border }}>
-      <p className="text-xs font-semibold mb-3" style={{ color: G.secondary }}>Add New GSTIN</p>
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <label className="text-[10px] font-medium mb-1 block" style={{ color: G.icon }}>GSTIN</label>
-          <input
-            type="text"
-            value={gstin}
-            onChange={e => setGstin(e.target.value.toUpperCase())}
-            maxLength={15}
-            placeholder="27AABCS1429B1ZB"
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none font-mono"
-            style={inputStyle}
-          />
-        </div>
-        <div className="flex-1">
-          <label className="text-[10px] font-medium mb-1 block" style={{ color: G.icon }}>State</label>
-          <input
-            type="text"
-            value={state}
-            onChange={e => setState(e.target.value)}
-            placeholder="e.g. Gujarat"
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none"
-            style={inputStyle}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => { if (gstin && state) { onAdd(gstin, state); setGstin(''); setState('') } }}
-          className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: G.primary }}
-        >
-          Add
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-xl px-3 py-2"
-          style={{ color: G.secondary }}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Add TAN Inline Form ───────────────────────────────────
-
-function AddTANForm({ onAdd, onCancel }: {
-  onAdd: (tan: string) => void
-  onCancel: () => void
-}) {
-  const [tan, setTan] = useState('')
-
-  return (
-    <div className="rounded-2xl p-4 border mb-4" style={{ background: G.canvas, borderColor: G.border }}>
-      <p className="text-xs font-semibold mb-3" style={{ color: G.secondary }}>Add New TAN</p>
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <label className="text-[10px] font-medium mb-1 block" style={{ color: G.icon }}>TAN</label>
-          <input
-            type="text"
-            value={tan}
-            onChange={e => setTan(e.target.value.toUpperCase())}
-            maxLength={10}
-            placeholder="DELS12345A"
-            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none font-mono"
-            style={inputStyle}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => { if (tan) { onAdd(tan); setTan('') } }}
-          className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
-          style={{ background: G.primary }}
-        >
-          Add
-        </button>
-        <button type="button" onClick={onCancel} className="rounded-xl px-3 py-2" style={{ color: G.secondary }}>
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ── Default Configs ───────────────────────────────────────
-
-function defaultGSTConfig(gstin: string, state: string): GSTConfig {
-  return {
-    gstin, state, registrationType: 'Regular',
-    returns: ['GSTR-1', 'GSTR-3B'],
-    frequency: 'Monthly',
-    eInvoicing: false, lut: false, reverseCharge: false, sezTaxpayer: false,
-    portalUsername: '', portalPassword: '',
-    reviewer: '', approver: '',
-  }
-}
-
-function defaultTDSConfig(tan: string): TDSConfig {
-  return {
-    tan, forms: ['26Q'], frequency: 'Quarterly',
-    salaryTds: false, vendorTds: true, contractorTds: false, payrollIntegration: false,
-    reviewer: '', approver: '',
-  }
-}
-
-function defaultAuditTypeConfig(): AuditTypeConfig {
-  return {
-    enabled: false, partner: '', manager: '',
-    targetMonth: '', previousAuditor: '', reportingStandard: 'Ind AS',
-  }
-}
-
-function defaultAuditConfig(): AuditConfig {
-  return {
-    statutory: defaultAuditTypeConfig(),
-    tax: defaultAuditTypeConfig(),
-    internal: defaultAuditTypeConfig(),
-    concurrent: defaultAuditTypeConfig(),
-    fyEnd: 'March 31', periodFrom: '', periodTo: '',
-    leadPartnerSignoff: false, qualityReview: false, qrReviewer: '', managementLetter: false,
-  }
-}
-
-// TAN map for known clients
-const CLIENT_TAN: Record<number, string | null> = {
-  1: 'DELS12345A',
-  2: 'MUMS67890B',
-  4: 'LKOS11223C',
-}
-
-function buildInitialGSTConfigs(clientId: number): GSTConfig[] {
-  const client = MOCK_CLIENTS.find(c => c.id === clientId)
-  if (!client || !client.gst_enabled || !client.gstin) return []
-
-  if (clientId === 1) {
-    return [{
-      gstin: '27AABCS1429B1ZB',
-      state: 'Gujarat',
-      registrationType: 'Regular',
-      returns: ['GSTR-1', 'GSTR-3B', 'GSTR-9'],
-      frequency: 'Monthly',
-      eInvoicing: true, lut: false, reverseCharge: false, sezTaxpayer: false,
-      portalUsername: 'sunrise_gst_user',
-      portalPassword: '',
-      reviewer: '2', approver: '1',
-    }]
-  }
-  return [defaultGSTConfig(client.gstin, client.state ?? '')]
-}
-
-function buildInitialTDSConfigs(clientId: number): TDSConfig[] {
-  const client = MOCK_CLIENTS.find(c => c.id === clientId)
-  if (!client || !client.tds_enabled) return []
-  const tan = CLIENT_TAN[clientId]
-  if (!tan) return []
-
-  if (clientId === 1) {
-    return [{
-      tan: 'DELS12345A',
-      forms: ['24Q', '26Q'],
-      frequency: 'Quarterly',
-      salaryTds: true, vendorTds: true, contractorTds: false, payrollIntegration: false,
-      reviewer: '2', approver: '1',
-    }]
-  }
-  return [defaultTDSConfig(tan)]
-}
-
-function buildInitialAuditConfig(clientId: number): AuditConfig {
-  if (clientId === 1) {
-    return {
-      ...defaultAuditConfig(),
-      statutory: { ...defaultAuditTypeConfig(), enabled: true },
-    }
-  }
-  return defaultAuditConfig()
-}
-
-// ── Main Page ─────────────────────────────────────────────
-
-export function FilingConfigPage() {
-  const { id } = useParams<{ id: string }>()
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(
-    id ? Number(id) : null
-  )
-  const [activeTab, setActiveTab] = useState<'gst' | 'tds' | 'audit'>('gst')
-
-  const client = MOCK_CLIENTS.find(c => c.id === selectedClientId) ?? null
-
-  // GST State
-  const [gstConfigs, setGstConfigs] = useState<GSTConfig[]>(() =>
-    selectedClientId ? buildInitialGSTConfigs(selectedClientId) : []
-  )
-  const [showAddGSTIN, setShowAddGSTIN] = useState(false)
-
-  // TDS State
-  const [tdsConfigs, setTdsConfigs] = useState<TDSConfig[]>(() =>
-    selectedClientId ? buildInitialTDSConfigs(selectedClientId) : []
-  )
-  const [showAddTAN, setShowAddTAN] = useState(false)
-
-  // Audit State
-  const [auditConfig, setAuditConfig] = useState<AuditConfig>(() =>
-    selectedClientId ? buildInitialAuditConfig(selectedClientId) : defaultAuditConfig()
-  )
-
-  function handleClientChange(clientId: number | null) {
-    setSelectedClientId(clientId)
-    if (clientId) {
-      setGstConfigs(buildInitialGSTConfigs(clientId))
-      setTdsConfigs(buildInitialTDSConfigs(clientId))
-      setAuditConfig(buildInitialAuditConfig(clientId))
-    } else {
-      setGstConfigs([])
-      setTdsConfigs([])
-      setAuditConfig(defaultAuditConfig())
-    }
-  }
-
-  const tabs: { key: 'gst' | 'tds' | 'audit'; label: string }[] = [
-    { key: 'gst', label: 'GST' },
-    { key: 'tds', label: 'TDS' },
-    { key: 'audit', label: 'Audit' },
-  ]
-
-  return (
-    <div className="p-4 md:p-6 max-w-[1400px] mx-auto" style={{ background: G.canvas }}>
-      <PageHeader
-        title="Filing Configuration"
-        sub="Configure compliance obligations and filing settings per client"
-      >
-        <select
-          value={selectedClientId ?? ''}
-          onChange={e => handleClientChange(e.target.value ? Number(e.target.value) : null)}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none"
-        >
-          <option value="">— Select a client —</option>
-          {MOCK_CLIENTS.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.legal_name} ({c.pan})
+          <option value="">— Select —</option>
+          {options.map(o => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>
-      </PageHeader>
+        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: G.muted }} />
+      </div>
+    </div>
+  )
+}
 
-      {!selectedClientId ? (
-        <div className="flex flex-col items-center gap-3 py-20">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
-            style={{ background: G.border }}>
-            <span className="text-2xl">⚙️</span>
+interface TextFieldProps {
+  label: string
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+  type?: string
+}
+
+function TextField({ label, value, onChange, placeholder, type = 'text' }: TextFieldProps) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: G.muted }}>
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-400"
+      />
+    </div>
+  )
+}
+
+// ─── GST Tab ─────────────────────────────────────────────────────────────────
+
+interface GSTTabProps {
+  configs: GSTINConfig[]
+  onUpdate: (configs: GSTINConfig[]) => void
+}
+
+function GSTTab({ configs, onUpdate }: GSTTabProps) {
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newGSTIN, setNewGSTIN] = useState('')
+  const [newStateCode, setNewStateCode] = useState('')
+
+  const userOptions = MOCK_USERS
+    .filter(u => u.role === 'admin' || u.role === 'super_admin')
+    .map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role})` }))
+
+  function updateConfig(idx: number, patch: Partial<GSTINConfig>) {
+    const next = configs.map((c, i) => (i === idx ? { ...c, ...patch } : c))
+    onUpdate(next)
+  }
+
+  function toggleReturn(idx: number, ret: GSTReturnType) {
+    const cur = configs[idx].applicableReturns
+    const next = cur.includes(ret) ? cur.filter(r => r !== ret) : [...cur, ret]
+    updateConfig(idx, { applicableReturns: next })
+  }
+
+  function handleAddGSTIN() {
+    if (!newGSTIN.trim()) return
+    const gstin = newGSTIN.trim().toUpperCase()
+    const state = newStateCode ? (STATE_CODES[newStateCode] ?? 'Unknown') : getStateFromGSTIN(gstin)
+    const config = { ...defaultGSTINConfig(gstin), state }
+    onUpdate([...configs, config])
+    setNewGSTIN('')
+    setNewStateCode('')
+    setShowAddForm(false)
+    toast.success(`GSTIN ${gstin} added`)
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {configs.map((cfg, idx) => (
+        <div
+          key={cfg.gstin}
+          className="rounded-2xl border p-5"
+          style={{ background: G.white, borderColor: G.border }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-sm font-bold" style={{ color: G.primary }}>
+                {cfg.gstin}
+              </span>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: '#EFF6FF', color: '#1D4ED8' }}
+              >
+                {cfg.state}
+              </span>
+            </div>
           </div>
-          <p className="text-sm font-semibold" style={{ color: G.secondary }}>Select a client to configure filing obligations</p>
-          <p className="text-xs" style={{ color: G.icon }}>Choose a client from the dropdown above</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-6 items-start">
-          {/* Left — tabs + content (2/3) */}
-          <div className="col-span-2">
-            {/* Tab bar */}
-            <div className="flex gap-2 mb-5">
-              {tabs.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className="px-5 py-2 text-sm font-semibold rounded-xl transition-all"
-                  style={activeTab === tab.key
-                    ? { background: G.primary, color: G.white }
-                    : { background: G.white, color: G.secondary, border: `1px solid ${G.border}` }
-                  }
-                >
-                  {tab.label}
-                </button>
+
+          {/* Return Types */}
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+              Applicable Returns
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {GST_RETURN_TYPES.map(rt => (
+                <PillToggle
+                  key={rt}
+                  label={rt}
+                  active={cfg.applicableReturns.includes(rt)}
+                  onClick={() => toggleReturn(idx, rt)}
+                />
               ))}
             </div>
-
-            {/* GST Tab */}
-            {activeTab === 'gst' && (
-              <div>
-                {gstConfigs.length === 0 && (
-                  <div className="rounded-2xl p-5 border mb-4 text-center" style={{ background: G.white, borderColor: G.border }}>
-                    <p className="text-sm" style={{ color: G.secondary }}>No GST configuration — GST not enabled for this client</p>
-                  </div>
-                )}
-                {gstConfigs.map((cfg, i) => (
-                  <GSTCard
-                    key={cfg.gstin}
-                    config={cfg}
-                    onChange={updated => {
-                      const next = [...gstConfigs]
-                      next[i] = updated
-                      setGstConfigs(next)
-                    }}
-                    onSave={() => toast.success(`GST configuration saved for ${cfg.gstin}`)}
-                  />
-                ))}
-                {showAddGSTIN && (
-                  <AddGSTINForm
-                    onAdd={(gstin, state) => {
-                      setGstConfigs(prev => [...prev, defaultGSTConfig(gstin, state)])
-                      setShowAddGSTIN(false)
-                    }}
-                    onCancel={() => setShowAddGSTIN(false)}
-                  />
-                )}
-                {!showAddGSTIN && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddGSTIN(true)}
-                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
-                    style={{ background: G.white, border: `1px solid ${G.border}`, color: G.secondary }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#CBD5E1')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = G.border)}
-                  >
-                    <Plus className="h-4 w-4" /> Add GSTIN
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* TDS Tab */}
-            {activeTab === 'tds' && (
-              <div>
-                {tdsConfigs.length === 0 ? (
-                  <div className="rounded-2xl p-5 border mb-4 text-center" style={{ background: G.white, borderColor: G.border }}>
-                    <p className="text-sm" style={{ color: G.secondary }}>No TDS configuration — TDS not enabled for this client</p>
-                  </div>
-                ) : (
-                  tdsConfigs.map((cfg, i) => (
-                    <TDSCard
-                      key={cfg.tan}
-                      config={cfg}
-                      onChange={updated => {
-                        const next = [...tdsConfigs]
-                        next[i] = updated
-                        setTdsConfigs(next)
-                      }}
-                      onSave={() => toast.success(`TDS configuration saved for TAN ${cfg.tan}`)}
-                    />
-                  ))
-                )}
-                {showAddTAN && (
-                  <AddTANForm
-                    onAdd={tan => {
-                      setTdsConfigs(prev => [...prev, defaultTDSConfig(tan)])
-                      setShowAddTAN(false)
-                    }}
-                    onCancel={() => setShowAddTAN(false)}
-                  />
-                )}
-                {!showAddTAN && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddTAN(true)}
-                    className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
-                    style={{ background: G.white, border: `1px solid ${G.border}`, color: G.secondary }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#CBD5E1')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = G.border)}
-                  >
-                    <Plus className="h-4 w-4" /> Add TAN
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Audit Tab */}
-            {activeTab === 'audit' && (
-              <AuditTab
-                config={auditConfig}
-                onChange={setAuditConfig}
-                clientName={client?.legal_name ?? ''}
-              />
-            )}
           </div>
 
-          {/* Right — Config Summary sticky (1/3) */}
-          <div className="col-span-1 sticky top-6">
-            <ConfigSummary
-              clientName={client?.legal_name ?? ''}
+          {/* Fields grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            <SelectField
+              label="Filing Frequency"
+              value={cfg.frequency}
+              onChange={val => updateConfig(idx, { frequency: val as FilingFrequency })}
+              options={[
+                { value: 'Monthly', label: 'Monthly' },
+                { value: 'Quarterly', label: 'Quarterly' },
+                { value: 'Annually', label: 'Annually' },
+              ]}
+            />
+            <TextField
+              label="Portal Username"
+              value={cfg.portalUsername}
+              onChange={val => updateConfig(idx, { portalUsername: val })}
+              placeholder="GST portal username"
+            />
+            <SelectField
+              label="Default Reviewer"
+              value={cfg.reviewerId}
+              onChange={val => updateConfig(idx, { reviewerId: val })}
+              options={userOptions}
+            />
+            <SelectField
+              label="Default Approver"
+              value={cfg.approverId}
+              onChange={val => updateConfig(idx, { approverId: val })}
+              options={userOptions}
+            />
+          </div>
+
+          {/* Toggles */}
+          <div className="flex flex-wrap gap-6 mb-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+                E-Invoicing
+              </p>
+              <ToggleSwitch
+                checked={cfg.eInvoicing}
+                onChange={val => updateConfig(idx, { eInvoicing: val })}
+                label={cfg.eInvoicing ? 'Applicable' : 'Not Applicable'}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+                LUT
+              </p>
+              <ToggleSwitch
+                checked={cfg.lut}
+                onChange={val => updateConfig(idx, { lut: val })}
+                label={cfg.lut ? 'Applicable' : 'Not Applicable'}
+              />
+            </div>
+          </div>
+
+          {/* Save */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => toast.success(`GST configuration saved for ${cfg.gstin}`)}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors"
+              style={{ background: G.primary }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1E293B')}
+              onMouseLeave={e => (e.currentTarget.style.background = G.primary)}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* Add GSTIN */}
+      {showAddForm ? (
+        <div
+          className="rounded-2xl border p-5"
+          style={{ background: G.white, borderColor: G.border }}
+        >
+          <p className="text-sm font-semibold mb-4" style={{ color: G.primary }}>
+            Add New GSTIN
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <TextField
+              label="GSTIN"
+              value={newGSTIN}
+              onChange={setNewGSTIN}
+              placeholder="27AABCS1429B1ZB"
+            />
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: G.muted }}>
+                State Code (optional)
+              </label>
+              <div className="relative">
+                <select
+                  value={newStateCode}
+                  onChange={e => setNewStateCode(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-400 pr-8"
+                >
+                  <option value="">Auto-detect from GSTIN</option>
+                  {Object.entries(STATE_CODES).map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {code} — {name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: G.muted }} />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => { setShowAddForm(false); setNewGSTIN(''); setNewStateCode('') }}
+              className="rounded-xl px-4 py-2 text-sm font-medium border transition-colors"
+              style={{ color: G.secondary, borderColor: G.border, background: G.canvas }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAddGSTIN}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors"
+              style={{ background: G.primary }}
+            >
+              Add GSTIN
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition-colors self-start"
+          style={{ color: G.accent, borderColor: G.accent, background: 'transparent' }}
+        >
+          <Plus size={16} />
+          Add GSTIN
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── TDS Tab ──────────────────────────────────────────────────────────────────
+
+interface TDSTabProps {
+  configs: TANConfig[]
+  onUpdate: (configs: TANConfig[]) => void
+}
+
+function TDSTab({ configs, onUpdate }: TDSTabProps) {
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newTAN, setNewTAN] = useState('')
+  const [payrollTooltip, setPayrollTooltip] = useState<number | null>(null)
+
+  const userOptions = MOCK_USERS
+    .filter(u => u.role === 'admin' || u.role === 'super_admin')
+    .map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role})` }))
+
+  function updateConfig(idx: number, patch: Partial<TANConfig>) {
+    const next = configs.map((c, i) => (i === idx ? { ...c, ...patch } : c))
+    onUpdate(next)
+  }
+
+  function toggleForm(idx: number, form: TDSFormType) {
+    const cur = configs[idx].applicableForms
+    const next = cur.includes(form) ? cur.filter(f => f !== form) : [...cur, form]
+    updateConfig(idx, { applicableForms: next })
+  }
+
+  function handleAddTAN() {
+    if (!newTAN.trim()) return
+    const tan = newTAN.trim().toUpperCase()
+    onUpdate([...configs, defaultTANConfig(tan)])
+    setNewTAN('')
+    setShowAddForm(false)
+    toast.success(`TAN ${tan} added`)
+  }
+
+  const TDS_FORM_LABELS: Record<TDSFormType, string> = {
+    '24Q': '24Q (Salary)',
+    '26Q': '26Q (Non-Salary)',
+    '27Q': '27Q (NRI)',
+    '27EQ': '27EQ (TCS)',
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {configs.map((cfg, idx) => (
+        <div
+          key={cfg.tan}
+          className="rounded-2xl border p-5"
+          style={{ background: G.white, borderColor: G.border }}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-4">
+            <span className="font-mono text-sm font-bold" style={{ color: G.primary }}>
+              TAN: {cfg.tan}
+            </span>
+          </div>
+
+          {/* Forms */}
+          <div className="mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+              Applicable TDS Forms
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {TDS_FORM_TYPES.map(form => (
+                <PillToggle
+                  key={form}
+                  label={TDS_FORM_LABELS[form]}
+                  active={cfg.applicableForms.includes(form)}
+                  onClick={() => toggleForm(idx, form)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Dropdowns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+            <SelectField
+              label="Filing Frequency"
+              value={cfg.frequency}
+              onChange={() => {}}
+              options={[{ value: 'Quarterly', label: 'Quarterly' }]}
+            />
+            <SelectField
+              label="Default Reviewer"
+              value={cfg.reviewerId}
+              onChange={val => updateConfig(idx, { reviewerId: val })}
+              options={userOptions}
+            />
+            <SelectField
+              label="Default Approver"
+              value={cfg.approverId}
+              onChange={val => updateConfig(idx, { approverId: val })}
+              options={userOptions}
+            />
+          </div>
+
+          {/* Toggles */}
+          <div className="flex flex-wrap gap-6 mb-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+                Salary TDS
+              </p>
+              <ToggleSwitch
+                checked={cfg.salaryTDS}
+                onChange={val => updateConfig(idx, { salaryTDS: val })}
+                label={cfg.salaryTDS ? 'Applicable' : 'Not Applicable'}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+                Vendor TDS
+              </p>
+              <ToggleSwitch
+                checked={cfg.vendorTDS}
+                onChange={val => updateConfig(idx, { vendorTDS: val })}
+                label={cfg.vendorTDS ? 'Applicable' : 'Not Applicable'}
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+                Contractor TDS
+              </p>
+              <ToggleSwitch
+                checked={cfg.contractorTDS}
+                onChange={val => updateConfig(idx, { contractorTDS: val })}
+                label={cfg.contractorTDS ? 'Applicable' : 'Not Applicable'}
+              />
+            </div>
+            <div className="relative">
+              <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: G.muted }}>
+                Payroll Integration
+              </p>
+              <ToggleSwitch
+                checked={cfg.payrollIntegration}
+                onChange={val => {
+                  updateConfig(idx, { payrollIntegration: val })
+                  if (val) setPayrollTooltip(idx)
+                }}
+                label={cfg.payrollIntegration ? 'Enabled' : 'Disabled'}
+                tooltip="Coming soon"
+              />
+              {payrollTooltip === idx && cfg.payrollIntegration && (
+                <div
+                  className="absolute left-0 mt-1 z-10 rounded-lg px-3 py-2 text-xs shadow-lg"
+                  style={{ background: G.primary, color: G.white, whiteSpace: 'nowrap', top: '100%' }}
+                >
+                  Payroll Integration — Coming Soon
+                  <button
+                    onClick={() => setPayrollTooltip(null)}
+                    className="ml-2 opacity-70 hover:opacity-100"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Save */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => toast.success(`TDS configuration saved for TAN ${cfg.tan}`)}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors"
+              style={{ background: G.primary }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1E293B')}
+              onMouseLeave={e => (e.currentTarget.style.background = G.primary)}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {/* Add TAN */}
+      {showAddForm ? (
+        <div
+          className="rounded-2xl border p-5"
+          style={{ background: G.white, borderColor: G.border }}
+        >
+          <p className="text-sm font-semibold mb-4" style={{ color: G.primary }}>
+            Add New TAN
+          </p>
+          <div className="mb-4 max-w-sm">
+            <TextField
+              label="TAN Number"
+              value={newTAN}
+              onChange={setNewTAN}
+              placeholder="DELS12345A"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => { setShowAddForm(false); setNewTAN('') }}
+              className="rounded-xl px-4 py-2 text-sm font-medium border"
+              style={{ color: G.secondary, borderColor: G.border, background: G.canvas }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAddTAN}
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: G.primary }}
+            >
+              Add TAN
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition-colors self-start"
+          style={{ color: G.accent, borderColor: G.accent, background: 'transparent' }}
+        >
+          <Plus size={16} />
+          Add TAN
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Audit Tab ────────────────────────────────────────────────────────────────
+
+interface AuditTabProps {
+  config: AuditConfig
+  onUpdate: (config: AuditConfig) => void
+}
+
+function AuditTab({ config, onUpdate }: AuditTabProps) {
+  const userOptions = MOCK_USERS
+    .filter((u: { role: string }) => u.role === 'admin' || u.role === 'super_admin')
+    .map(u => ({ value: String(u.id), label: u.full_name }))
+
+  function updateAuditType(type: AuditType, patch: Partial<AuditTypeConfig>) {
+    onUpdate({
+      ...config,
+      types: {
+        ...config.types,
+        [type]: { ...config.types[type], ...patch },
+      },
+    })
+  }
+
+  function updateSchedule(patch: Partial<Pick<AuditConfig, 'fyEnd' | 'auditPeriodFrom' | 'auditPeriodTo'>>) {
+    onUpdate({ ...config, ...patch })
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Audit Types */}
+      <div
+        className="rounded-2xl border p-5"
+        style={{ background: G.white, borderColor: G.border }}
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: G.muted }}>
+          Audit Types Applicable
+        </p>
+
+        <div className="flex flex-col gap-6">
+          {AUDIT_TYPES.map(type => {
+            const cfg = config.types[type]
+            return (
+              <div key={type} className="flex flex-col gap-3">
+                {/* Toggle header */}
+                <div className="flex items-center gap-3">
+                  <ToggleSwitch
+                    checked={cfg.enabled}
+                    onChange={val => updateAuditType(type, { enabled: val })}
+                  />
+                  <span className="text-sm font-semibold" style={{ color: G.primary }}>
+                    {type}
+                  </span>
+                </div>
+
+                {/* Sub-fields when enabled */}
+                {cfg.enabled && (
+                  <div
+                    className="ml-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 rounded-xl p-4"
+                    style={{ background: G.canvas, border: `1px solid ${G.border}` }}
+                  >
+                    <SelectField
+                      label="Engagement Partner"
+                      value={cfg.engagementPartnerId}
+                      onChange={val => updateAuditType(type, { engagementPartnerId: val })}
+                      options={userOptions}
+                    />
+                    <SelectField
+                      label="Engagement Manager"
+                      value={cfg.engagementManagerId}
+                      onChange={val => updateAuditType(type, { engagementManagerId: val })}
+                      options={userOptions}
+                    />
+                    <TextField
+                      label="Target Completion Month"
+                      value={cfg.targetCompletionMonth}
+                      onChange={val => updateAuditType(type, { targetCompletionMonth: val })}
+                      type="month"
+                    />
+                    <TextField
+                      label="Previous Auditor Name"
+                      value={cfg.previousAuditorName}
+                      onChange={val => updateAuditType(type, { previousAuditorName: val })}
+                      placeholder="Enter previous auditor"
+                    />
+                    <SelectField
+                      label="Reporting Standard"
+                      value={cfg.reportingStandard}
+                      onChange={val => updateAuditType(type, { reportingStandard: val as ReportingStandard })}
+                      options={[
+                        { value: 'Ind AS', label: 'Ind AS' },
+                        { value: 'AS', label: 'AS' },
+                        { value: 'IFRS', label: 'IFRS' },
+                      ]}
+                    />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Filing Schedule */}
+      <div
+        className="rounded-2xl border p-5"
+        style={{ background: G.white, borderColor: G.border }}
+      >
+        <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: G.muted }}>
+          Filing Schedule Configuration
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SelectField
+            label="Financial Year End"
+            value={config.fyEnd}
+            onChange={val => updateSchedule({ fyEnd: val as FYEnd })}
+            options={[
+              { value: 'March 31', label: 'March 31' },
+              { value: 'December 31', label: 'December 31' },
+              { value: 'September 30', label: 'September 30' },
+            ]}
+          />
+          <TextField
+            label="Audit Period From"
+            value={config.auditPeriodFrom}
+            onChange={val => updateSchedule({ auditPeriodFrom: val })}
+            type="date"
+          />
+          <TextField
+            label="Audit Period To"
+            value={config.auditPeriodTo}
+            onChange={val => updateSchedule({ auditPeriodTo: val })}
+            type="date"
+          />
+        </div>
+      </div>
+
+      {/* Save */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => toast.success('Audit configuration saved')}
+          className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors"
+          style={{ background: G.primary }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#1E293B')}
+          onMouseLeave={e => (e.currentTarget.style.background = G.primary)}
+        >
+          Save All
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Configuration Summary Card ───────────────────────────────────────────────
+
+interface SummaryCardProps {
+  clientName: string
+  gstConfigs: GSTINConfig[]
+  tdsConfigs: TANConfig[]
+  auditConfig: AuditConfig
+}
+
+function SummaryCard({ clientName, gstConfigs, tdsConfigs, auditConfig }: SummaryCardProps) {
+  const gstReturns = gstConfigs.flatMap(c => c.applicableReturns)
+  const uniqueGSTReturns = [...new Set(gstReturns)]
+  const tdsForms = tdsConfigs.flatMap(c => c.applicableForms)
+  const uniqueTDSForms = [...new Set(tdsForms)]
+  const gstFreq = gstConfigs[0]?.frequency ?? '—'
+  const enabledAudits = AUDIT_TYPES.filter(t => auditConfig.types[t].enabled)
+
+  return (
+    <div
+      className="rounded-2xl border p-5 sticky top-6"
+      style={{ background: G.white, borderColor: G.border }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <Settings size={16} style={{ color: G.accent }} />
+        <span className="text-sm font-bold" style={{ color: G.primary }}>
+          Configuration Summary
+        </span>
+      </div>
+
+      <div className="text-xs font-semibold mb-3" style={{ color: G.secondary }}>
+        {clientName}
+      </div>
+      <div className="mb-4 h-px" style={{ background: G.border }} />
+
+      {/* GST */}
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: G.accent }}>
+          GST
+        </p>
+        <div className="flex flex-col gap-1">
+          <SummaryRow label="GSTINs configured" value={String(gstConfigs.length)} />
+          <SummaryRow
+            label="Returns enabled"
+            value={uniqueGSTReturns.length ? uniqueGSTReturns.join(', ') : '—'}
+          />
+          <SummaryRow label="Frequency" value={gstFreq} />
+        </div>
+      </div>
+
+      <div className="mb-4 h-px" style={{ background: G.border }} />
+
+      {/* TDS */}
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: G.accent }}>
+          TDS
+        </p>
+        <div className="flex flex-col gap-1">
+          <SummaryRow label="TANs configured" value={String(tdsConfigs.length)} />
+          <SummaryRow
+            label="Forms enabled"
+            value={uniqueTDSForms.length ? uniqueTDSForms.join(', ') : '—'}
+          />
+          <SummaryRow label="Frequency" value="Quarterly" />
+        </div>
+      </div>
+
+      <div className="mb-4 h-px" style={{ background: G.border }} />
+
+      {/* Audit */}
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: G.accent }}>
+          Audit
+        </p>
+        <div className="flex flex-col gap-1">
+          {AUDIT_TYPES.map(type => (
+            <SummaryRow
+              key={type}
+              label={type}
+              value=""
+              icon={auditConfig.types[type].enabled ? 'check' : 'cross'}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-2 h-px" style={{ background: G.border }} />
+      <p className="text-xs" style={{ color: G.muted }}>
+        Last Updated: Just now
+      </p>
+
+      {enabledAudits.length > 0 && (
+        <div
+          className="mt-3 rounded-lg px-3 py-2 text-xs"
+          style={{ background: '#F0FDF4', color: '#166534' }}
+        >
+          {enabledAudits.length} audit type{enabledAudits.length > 1 ? 's' : ''} configured
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface SummaryRowProps {
+  label: string
+  value: string
+  icon?: 'check' | 'cross'
+}
+
+function SummaryRow({ label, value, icon }: SummaryRowProps) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <span className="text-xs" style={{ color: G.muted, flexShrink: 0 }}>
+        · {label}
+      </span>
+      {icon === 'check' ? (
+        <Check size={12} style={{ color: '#16A34A', marginTop: 1, flexShrink: 0 }} />
+      ) : icon === 'cross' ? (
+        <X size={12} style={{ color: G.muted, marginTop: 1, flexShrink: 0 }} />
+      ) : (
+        <span className="text-xs font-medium text-right" style={{ color: G.secondary }}>
+          {value}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+type TabId = 'gst' | 'tds' | 'audit'
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'gst', label: 'GST' },
+  { id: 'tds', label: 'TDS' },
+  { id: 'audit', label: 'Audit' },
+]
+
+export function FilingConfigPage() {
+  const { id: routeClientId } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
+
+  // Client selection
+  const initialClientId = routeClientId ? Number(routeClientId) : (MOCK_CLIENTS[0]?.id ?? 1)
+  const [selectedClientId, setSelectedClientId] = useState<number>(initialClientId)
+  const [activeTab, setActiveTab] = useState<TabId>('gst')
+
+  // Per-client config state (lazy init per client selection)
+  const [gstConfigsByClient, setGstConfigsByClient] = useState<Record<number, GSTINConfig[]>>({})
+  const [tdsConfigsByClient, setTdsConfigsByClient] = useState<Record<number, TANConfig[]>>({})
+  const [auditConfigsByClient, setAuditConfigsByClient] = useState<Record<number, AuditConfig>>({})
+
+  function getGSTConfigs(clientId: number): GSTINConfig[] {
+    if (!gstConfigsByClient[clientId]) {
+      return seedGSTForClient(clientId)
+    }
+    return gstConfigsByClient[clientId]
+  }
+
+  function getTDSConfigs(clientId: number): TANConfig[] {
+    if (!tdsConfigsByClient[clientId]) {
+      return seedTDSForClient(clientId)
+    }
+    return tdsConfigsByClient[clientId]
+  }
+
+  function getAuditConfig(clientId: number): AuditConfig {
+    if (!auditConfigsByClient[clientId]) {
+      return seedAuditForClient(clientId)
+    }
+    return auditConfigsByClient[clientId]
+  }
+
+  const selectedClient = useMemo(
+    () => MOCK_CLIENTS.find(c => c.id === selectedClientId),
+    [selectedClientId]
+  )
+
+  const gstConfigs = useMemo(() => getGSTConfigs(selectedClientId), [selectedClientId, gstConfigsByClient])
+  const tdsConfigs = useMemo(() => getTDSConfigs(selectedClientId), [selectedClientId, tdsConfigsByClient])
+  const auditConfig = useMemo(() => getAuditConfig(selectedClientId), [selectedClientId, auditConfigsByClient])
+
+  function handleClientChange(clientId: string) {
+    const id = Number(clientId)
+    setSelectedClientId(id)
+    setActiveTab('gst')
+    if (routeClientId) {
+      navigate(`/clients/${clientId}/filing-config`, { replace: true })
+    }
+  }
+
+  function handleGSTUpdate(configs: GSTINConfig[]) {
+    setGstConfigsByClient(prev => ({ ...prev, [selectedClientId]: configs }))
+  }
+
+  function handleTDSUpdate(configs: TANConfig[]) {
+    setTdsConfigsByClient(prev => ({ ...prev, [selectedClientId]: configs }))
+  }
+
+  function handleAuditUpdate(config: AuditConfig) {
+    setAuditConfigsByClient(prev => ({ ...prev, [selectedClientId]: config }))
+  }
+
+  return (
+    <div className="min-h-screen" style={{ background: G.canvas }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold" style={{ color: G.primary }}>
+            Filing Configuration
+          </h1>
+          <p className="text-sm mt-1" style={{ color: G.muted }}>
+            Configure compliance obligations per client
+          </p>
+        </div>
+
+        {/* Client Selector */}
+        <div
+          className="rounded-2xl border p-4 mb-6"
+          style={{ background: G.white, borderColor: G.border }}
+        >
+          <div className="flex items-center gap-4 flex-wrap">
+            <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: G.muted }}>
+              Select Client
+            </label>
+            <div className="relative flex-1 min-w-[240px] max-w-sm">
+              <select
+                value={selectedClientId}
+                onChange={e => handleClientChange(e.target.value)}
+                className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-slate-400 pr-8"
+              >
+                {MOCK_CLIENTS.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {clientDisplayName(c)}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: G.muted }} />
+            </div>
+            {selectedClient && (
+              <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ background: '#F0F9FF', color: G.accent }}>
+                {selectedClient.gstin ?? 'No GSTIN'}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {selectedClientId && (
+          <div className="flex gap-6 items-start">
+            {/* Left: Tabs + Content */}
+            <div className="flex-1 min-w-0">
+              {/* Tab Bar */}
+              <div
+                className="rounded-2xl border mb-6 overflow-hidden"
+                style={{ background: G.white, borderColor: G.border }}
+              >
+                <div
+                  role="tablist"
+                  className="flex border-b"
+                  style={{ borderColor: G.border }}
+                >
+                  {TABS.map(tab => (
+                    <button
+                      key={tab.id}
+                      role="tab"
+                      aria-selected={activeTab === tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={cn(
+                        'px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-px',
+                        activeTab === tab.id
+                          ? 'border-current'
+                          : 'border-transparent'
+                      )}
+                      style={
+                        activeTab === tab.id
+                          ? { color: G.accent, borderBottomColor: G.accent }
+                          : { color: G.muted, borderBottomColor: 'transparent' }
+                      }
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === 'gst' && (
+                <GSTTab configs={gstConfigs} onUpdate={handleGSTUpdate} />
+              )}
+              {activeTab === 'tds' && (
+                <TDSTab configs={tdsConfigs} onUpdate={handleTDSUpdate} />
+              )}
+              {activeTab === 'audit' && (
+                <AuditTab config={auditConfig} onUpdate={handleAuditUpdate} />
+              )}
+            </div>
+
+            {/* Right: Summary Card */}
+            <div className="w-72 flex-shrink-0 hidden lg:block">
+              <SummaryCard
+                clientName={selectedClient ? clientDisplayName(selectedClient) : '—'}
+                gstConfigs={gstConfigs}
+                tdsConfigs={tdsConfigs}
+                auditConfig={auditConfig}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Summary (below tabs) */}
+        {selectedClientId && (
+          <div className="mt-6 lg:hidden">
+            <SummaryCard
+              clientName={selectedClient ? clientDisplayName(selectedClient) : '—'}
               gstConfigs={gstConfigs}
               tdsConfigs={tdsConfigs}
               auditConfig={auditConfig}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

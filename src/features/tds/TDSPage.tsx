@@ -14,13 +14,13 @@ import {
   ReceiptText, CheckCircle2, AlertTriangle, Clock,
   Eye, EyeOff, RefreshCw, Check, AlertCircle,
   Minus, Upload, RotateCcw, ChevronDown, Download,
-  FileCheck, Pencil, Trash2, Save, Send, Hash,
+  Building2, Calendar, FileCheck, Users,
 } from 'lucide-react'
 import { mockComplianceApi } from '@/mock/api'
 import { clientsApi } from '@/shared/api/clients'
 import { toast } from 'sonner'
 import {
-  G, PageHeader, OutlineBtn, ContentCard,
+  G, PageHeader, OutlineBtn, ContentCard, StatusBadge,
 } from '@/shared/components/GrayKpi'
 import { cn } from '@/shared/components/cn'
 
@@ -33,24 +33,18 @@ const MAIN_TABS: { key: MainTab; label: string }[] = [
   { key: 'reconciliation', label: 'Reconciliation' },
 ]
 
-// New form numbers (FY 2026-27 onwards) → old equivalents
-const FORM_TYPES = ['138-TDS', '140-TDS', '144-TDS', '143-TDS'] as const
+const FORM_TYPES = ['24Q', '26Q', '27Q', '27EQ'] as const
 type FormType = typeof FORM_TYPES[number]
 
 const QUARTERS = ['Q1 FY 2025-26', 'Q2 FY 2025-26', 'Q3 FY 2025-26', 'Q4 FY 2025-26', 'Q1 FY 2026-27']
 const YEARS    = ['2024-25', '2025-26', '2026-27']
 
-// Form type labels — new (138/140/144/143) with old equivalent shown
-const FORM_META: Record<FormType, { full: string; oldForm: string; desc: string }> = {
-  '138-TDS': { full: 'Form No. 138-TDS', oldForm: 'Form 24Q',  desc: 'TDS on Salaries' },
-  '140-TDS': { full: 'Form No. 140-TDS', oldForm: 'Form 26Q',  desc: 'TDS on Payments to Residents (Non-Salary)' },
-  '144-TDS': { full: 'Form No. 144-TDS', oldForm: 'Form 27Q',  desc: 'Payments to Non-Residents (Other than Salary)' },
-  '143-TDS': { full: 'Form No. 143-TDS', oldForm: 'Form 27EQ', desc: 'TCS — Tax Collected at Source' },
-}
-
-// Reverse map: old form number → new form type key (for mock data display)
-const OLD_TO_NEW: Record<string, FormType> = {
-  '24Q': '138-TDS', '26Q': '140-TDS', '27Q': '144-TDS', '27EQ': '143-TDS',
+// Form type labels
+const FORM_META: Record<FormType, { full: string; desc: string }> = {
+  '24Q':  { full: 'Form 24Q',  desc: 'TDS on Salaries' },
+  '26Q':  { full: 'Form 26Q',  desc: 'TDS on Payments to Residents (Non-Salary)' },
+  '27Q':  { full: 'Form 27Q',  desc: 'TDS on Payments to Non-Residents' },
+  '27EQ': { full: 'Form 27EQ', desc: 'TCS — Tax Collected at Source' },
 }
 
 // ── TAN credentials ────────────────────────────────────────────────────────
@@ -123,7 +117,7 @@ function buildFormData(clientId: string, quarter: string, formType: FormType, cl
     tdsDeducted: '—',
   }
 
-  if (formType === '138-TDS') {          // Salaries (was 24Q)
+  if (formType === '24Q') {
     return {
       ...base,
       employees: 45,
@@ -133,7 +127,7 @@ function buildFormData(clientId: string, quarter: string, formType: FormType, cl
     }
   }
 
-  if (formType === '140-TDS') {          // Non-salary residents (was 26Q)
+  if (formType === '26Q') {
     return {
       ...base,
       deductees: 14,
@@ -141,15 +135,15 @@ function buildFormData(clientId: string, quarter: string, formType: FormType, cl
       tdsDeducted: '1,82,000',
       taxDeposited: '1,82,000',
       sections: [
-        { section: '194C', nature: 'Payments to Contractors',         amount: '15,00,000', tds: '30,000', rate: '2%' },
+        { section: '194C', nature: 'Payments to Contractors',    amount: '15,00,000', tds: '30,000',  rate: '2%' },
         { section: '194J', nature: 'Professional / Technical Services', amount: '8,00,000', tds: '80,000', rate: '10%' },
-        { section: '194I', nature: 'Rent',                            amount: '6,00,000', tds: '60,000', rate: '10%' },
-        { section: '194H', nature: 'Commission / Brokerage',          amount: '7,40,000', tds: '12,000', rate: '~2%' },
+        { section: '194I', nature: 'Rent',                       amount: '6,00,000', tds: '60,000',  rate: '10%' },
+        { section: '194H', nature: 'Commission / Brokerage',     amount: '7,40,000', tds: '12,000',  rate: '~2%' },
       ],
     }
   }
 
-  if (formType === '144-TDS') {          // Non-residents foreign payments (was 27Q)
+  if (formType === '27Q') {
     return {
       ...base,
       deductees: 3,
@@ -157,13 +151,13 @@ function buildFormData(clientId: string, quarter: string, formType: FormType, cl
       tdsDeducted: '1,25,000',
       taxDeposited: '1,25,000',
       sections: [
-        { section: '195',  nature: 'Other Payments to Non-Residents',  amount: '8,00,000', tds: '80,000', rate: '10%' },
+        { section: '195',  nature: 'Other Payments to Non-Residents', amount: '8,00,000', tds: '80,000',  rate: '10%' },
         { section: '196C', nature: 'Income from Units / LT Cap Gains', amount: '4,50,000', tds: '45,000', rate: '10%' },
       ],
     }
   }
 
-  // 143-TDS — TCS (was 27EQ)
+  // 27EQ — TCS
   return {
     ...base,
     minorHead: '206',
@@ -172,8 +166,8 @@ function buildFormData(clientId: string, quarter: string, formType: FormType, cl
     tdsDeducted: '24,000',
     taxDeposited: '24,000',
     sections: [
-      { section: '206C(1)',  nature: 'Sale of Scrap',           amount: '5,00,000',  tds: '5,000',  rate: '1%' },
-      { section: '206C(1H)', nature: 'Sale of Goods > ₹50L',   amount: '19,00,000', tds: '19,000', rate: '0.1%' },
+      { section: '206C(1)', nature: 'Sale of Scrap',   amount: '5,00,000', tds: '5,000',  rate: '1%' },
+      { section: '206C(1H)', nature: 'Sale of Goods > ₹50L', amount: '19,00,000', tds: '19,000', rate: '0.1%' },
     ],
   }
 }
@@ -224,6 +218,28 @@ function Sel({ label, value, onChange, options }: {
   )
 }
 
+function FormField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: G.icon }}>{label}</span>
+      <span className={cn('text-sm font-medium', mono ? 'font-mono' : '')} style={{ color: G.primary }}>{value || '—'}</span>
+    </div>
+  )
+}
+
+function SectionCard({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border p-4" style={{ background: G.white, borderColor: G.border }}>
+      <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: `1px solid ${G.border}` }}>
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: G.canvas }}>
+          <Icon className="h-3.5 w-3.5" style={{ color: G.secondary }} />
+        </div>
+        <h4 className="text-sm font-semibold" style={{ color: G.primary }}>{title}</h4>
+      </div>
+      {children}
+    </div>
+  )
+}
 
 function reconStatusStyle(s: string): React.CSSProperties {
   if (s === 'matched')  return { background: '#F0FDF4', color: '#16A34A' }
@@ -250,9 +266,7 @@ function OverviewTab({ returns }: { returns: any[] }) {
   }
 
   const byForm = FORM_TYPES.map(ft => {
-    // mock data stores old form names (24Q/26Q…); map via OLD_TO_NEW
-    const oldKey = FORM_META[ft].oldForm.replace('Form ', '')
-    const rts = returns.filter((r: any) => r.return_type === oldKey || r.return_type === ft)
+    const rts = returns.filter((r: any) => r.return_type === ft)
     return {
       form: ft,
       meta: FORM_META[ft],
@@ -307,9 +321,8 @@ function OverviewTab({ returns }: { returns: any[] }) {
                   const pct = r.total ? Math.round((r.filed / r.total) * 100) : 0
                   return (
                     <tr key={r.form} style={{ borderBottom: `1px solid ${G.border}` }}>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs font-semibold block" style={{ color: G.primary }}>{r.meta.full}</span>
-                        <span className="text-[10px]" style={{ color: G.icon }}>Previously: {r.meta.oldForm}</span>
+                      <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: G.primary }}>
+                        {r.meta.full}
                       </td>
                       <td className="px-4 py-3 text-xs" style={{ color: G.secondary }}>{r.meta.desc}</td>
                       <td className="px-4 py-3 font-semibold" style={{ color: G.primary }}>{r.total}</td>
@@ -337,55 +350,27 @@ function OverviewTab({ returns }: { returns: any[] }) {
             <div className="overflow-x-auto">
               <table className="data-table">
                 <thead>
-                  <tr style={{ background: G.canvas }}>
-                    {['Client','Form','Quarter','Due Date','Deductees','Challan Count','Status','Filed On'].map(h => (
-                      <th key={h} className="text-left px-4 py-2.5 text-[10px] font-semibold border-b whitespace-nowrap"
-                        style={{ color: G.secondary, borderColor: G.border }}>{h}</th>
-                    ))}
-                  </tr>
+                  <tr><th>Client</th><th>Form</th><th>Quarter</th><th>Due Date</th><th>Deductees</th><th>TDS Amount</th><th>Status</th><th>Filed On</th></tr>
                 </thead>
                 <tbody>
-                  {(returns as any[]).map((r: any, idx: number) => {
-                    const newKey = OLD_TO_NEW[r.return_type] ?? (r.return_type as FormType)
-                    const meta   = FORM_META[newKey]
-                    const challanCount = (idx % 3) + 1  // mock: 1-3 challans per return
-                    return (
-                      <tr key={r.id} style={{ borderBottom: `1px solid ${G.border}` }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = G.canvas}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                        <td className="px-4 py-2.5 font-semibold text-xs" style={{ color: G.primary }}>{r.client_name}</td>
-                        <td className="px-4 py-2.5">
-                          {meta ? (
-                            <div>
-                              <span className="font-mono text-xs font-semibold block" style={{ color: G.primary }}>{meta.full}</span>
-                              <span className="text-[10px]" style={{ color: G.icon }}>{meta.oldForm}</span>
-                            </div>
-                          ) : (
-                            <span className="font-mono text-xs font-semibold" style={{ color: G.primary }}>{r.return_type}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-xs" style={{ color: G.secondary }}>{r.quarter}</td>
-                        <td className="px-4 py-2.5 text-xs" style={{ color: G.primary }}>{r.due_date ?? '—'}</td>
-                        <td className="px-4 py-2.5 text-xs" style={{ color: G.secondary }}>{r.deductees}</td>
-                        <td className="px-4 py-2.5">
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold tabular-nums"
-                            style={{ color: G.primary }}>
-                            <Hash className="h-3 w-3" style={{ color: G.icon }} />{challanCount}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                            style={r.status === 'filed' ? { background: '#F0FDF4', color: '#16A34A' }
-                              : r.status === 'pending' || r.status === 'in_review' ? { background: '#EFF6FF', color: '#2563EB' }
-                              : { background: '#FEF2F2', color: '#DC2626' }}>
-                            {r.status === 'filed' ? <Check className="h-2.5 w-2.5" /> : null}
-                            {r.status === 'filed' ? 'Filed' : r.status === 'pending' ? 'Pending' : r.status === 'in_review' ? 'In Review' : 'Overdue'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-xs" style={{ color: G.secondary }}>{r.filed_date ?? '—'}</td>
-                      </tr>
-                    )
-                  })}
+                  {(returns as any[]).map((r: any) => (
+                    <tr key={r.id}>
+                      <td style={{ fontWeight: 500 }}>{r.client_name}</td>
+                      <td>
+                        <span className="font-mono text-xs font-semibold" style={{ color: G.primary }}>
+                          {FORM_META[r.return_type as FormType]?.full ?? r.return_type}
+                        </span>
+                      </td>
+                      <td>{r.quarter}</td>
+                      <td style={{ color: r.status === 'overdue' ? '#DC2626' : G.primary, fontWeight: r.status === 'overdue' ? 600 : 400 }}>
+                        {r.due_date ?? '—'}
+                      </td>
+                      <td>{r.deductees}</td>
+                      <td className="font-mono text-xs">₹{(r.total_tds / 1000).toFixed(0)}K</td>
+                      <td><StatusBadge status={r.status} /></td>
+                      <td>{r.filed_date ?? '—'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -418,7 +403,7 @@ function ClientsTab({ clients }: { clients: any[] }) {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr style={{ background: G.canvas }}>
-                {['S.No', 'Client Name', 'PAN', 'TAN', 'TRACES Password', 'TDS Status'].map(h => (
+                {['S.No', 'Client Name', 'PAN', 'TAN', 'TRACES Username', 'TRACES Password', 'TDS Status'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold border-b whitespace-nowrap"
                     style={{ color: G.secondary, borderColor: G.border }}>{h}</th>
                 ))}
@@ -437,6 +422,7 @@ function ClientsTab({ clients }: { clients: any[] }) {
                     <td className="px-4 py-3 font-semibold" style={{ color: G.primary }}>{c.legal_name}</td>
                     <td className="px-4 py-3 font-mono text-xs" style={{ color: G.secondary }}>{c.pan ?? '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: G.primary }}>{creds.tan}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: G.secondary }}>{creds.username}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs" style={{ color: G.primary }}>
@@ -471,301 +457,249 @@ function ClientsTab({ clients }: { clients: any[] }) {
   )
 }
 
-// ── Mock editable table data ──────────────────────────────────────────────
-type ChallanRow = { id: string; challan_no: string; bsr: string; deposit_date: string; tan: string; amount: string; bank: string; status: string }
-type DeducteeRow = { id: string; pan: string; name: string; section: string; amount: string; tds: string; rate: string; cert: string }
-
-const MOCK_CHALLANS: ChallanRow[] = [
-  { id: 'ch1', challan_no: 'CHN-001', bsr: '0012345', deposit_date: '15-Jun-25', tan: 'SRTX12345A', amount: '5,20,000', bank: 'HDFC Bank', status: 'Paid' },
-  { id: 'ch2', challan_no: 'CHN-002', bsr: '0012345', deposit_date: '07-Jul-25', tan: 'SRTX12345A', amount: '1,82,000', bank: 'ICICI Bank', status: 'Paid' },
-  { id: 'ch3', challan_no: 'CHN-003', bsr: '0098765', deposit_date: '15-Sep-25', tan: 'BLSK98765B', amount: '62,500',   bank: 'SBI',        status: 'Paid' },
-]
-const MOCK_DEDUCTEES: DeducteeRow[] = [
-  { id: 'dd1', pan: 'ABCDE1234Z', name: 'Ramesh Kumar',      section: '192',  amount: '8,50,000', tds: '62,000', rate: '—',   cert: '—' },
-  { id: 'dd2', pan: 'XYZAB9876A', name: 'Delta Services',    section: '194J', amount: '8,00,000', tds: '80,000', rate: '10%', cert: 'CERT-001' },
-  { id: 'dd3', pan: 'PQRST9876Y', name: 'Omega Traders',     section: '194C', amount: '15,00,000',tds: '30,000', rate: '2%',  cert: '—' },
-  { id: 'dd4', pan: 'LMNOP5432K', name: 'Bravo Consulting',  section: '194I', amount: '6,00,000', tds: '60,000', rate: '10%', cert: 'CERT-002' },
-]
-
-// Inline-editable generic table
-function EditableTable<T extends Record<string, string>>({
-  cols, rows, onRowsChange,
-}: {
-  cols: { key: keyof T; label: string; mono?: boolean }[]
-  rows: T[]
-  onRowsChange: (rows: T[]) => void
-}) {
-  const [editId, setEditId] = useState<string | null>(null)
-  const [buf,    setBuf]    = useState<T | null>(null)
-
-  const startEdit = (row: T) => { setEditId((row as any).id); setBuf({ ...row }) }
-  const saveEdit  = () => {
-    if (!buf) return
-    onRowsChange(rows.map(r => (r as any).id === editId ? buf : r))
-    setEditId(null); setBuf(null)
-    toast.success('Row updated')
-  }
-  const deleteRow = (id: string) => { onRowsChange(rows.filter(r => (r as any).id !== id)); toast.info('Row deleted') }
-  const addRow    = () => {
-    const newRow = cols.reduce((acc, c) => ({ ...acc, [c.key]: '' }), { id: Math.random().toString(36).slice(2) } as any) as T
-    onRowsChange([...rows, newRow]); toast.info('New row added')
-  }
-
-  return (
-    <div>
-      <div className="flex justify-end mb-2">
-        <button onClick={addRow}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
-          style={{ background: '#0584C7' }}>
-          <Hash className="h-3.5 w-3.5" />Add Row
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr style={{ background: G.canvas }}>
-              <th className="text-left px-3 py-2 text-[10px] font-semibold border-b"
-                style={{ color: G.secondary, borderColor: G.border }}>#</th>
-              {cols.map(c => (
-                <th key={String(c.key)} className="text-left px-3 py-2 text-[10px] font-semibold border-b whitespace-nowrap"
-                  style={{ color: G.secondary, borderColor: G.border }}>{c.label}</th>
-              ))}
-              <th className="text-left px-3 py-2 text-[10px] font-semibold border-b whitespace-nowrap"
-                style={{ color: G.secondary, borderColor: G.border }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={cols.length + 2} className="px-3 py-8 text-center text-xs" style={{ color: G.icon }}>
-                No records — click Add Row to create entries
-              </td></tr>
-            )}
-            {rows.map((row, ri) => {
-              const id = (row as any).id
-              const isEditing = editId === id
-              return (
-                <tr key={id} style={{ borderBottom: `1px solid ${G.border}`, background: isEditing ? '#F8FAFC' : 'transparent' }}
-                  onMouseEnter={e => { if (!isEditing) (e.currentTarget as HTMLElement).style.background = G.canvas }}
-                  onMouseLeave={e => { if (!isEditing) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                  <td className="px-3 py-2.5 font-mono text-[10px]" style={{ color: G.icon }}>{ri + 1}</td>
-                  {cols.map(c => (
-                    <td key={String(c.key)} className="px-3 py-2.5 whitespace-nowrap">
-                      {isEditing
-                        ? <input value={(buf as any)?.[c.key] ?? ''}
-                            onChange={e => setBuf(b => b ? ({ ...b, [c.key]: e.target.value }) : b)}
-                            className="w-full min-w-[70px] rounded px-1.5 py-0.5 text-xs outline-none"
-                            style={{ border: `1px solid #0584C7`, background: '#EFF8FF', color: G.primary }} />
-                        : <span style={{ color: G.primary, fontFamily: c.mono ? 'monospace' : 'inherit', fontWeight: ri === 0 && c.key === cols[0].key ? 500 : 400 }}>
-                            {String(row[c.key]) || '—'}
-                          </span>
-                      }
-                    </td>
-                  ))}
-                  <td className="px-3 py-2.5">
-                    {isEditing
-                      ? <div className="flex items-center gap-1">
-                          <button onClick={saveEdit}
-                            className="px-2 py-0.5 rounded text-[10px] font-semibold text-white"
-                            style={{ background: '#16A34A' }}>Save</button>
-                          <button onClick={() => { setEditId(null); setBuf(null) }}
-                            className="px-2 py-0.5 rounded text-[10px] font-semibold"
-                            style={{ background: G.canvas, color: G.secondary }}>Cancel</button>
-                        </div>
-                      : <div className="flex items-center gap-1.5">
-                          <button onClick={() => startEdit(row)}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                            style={{ background: '#EFF6FF', color: '#2563EB' }}>
-                            <Pencil className="h-2.5 w-2.5" />Edit
-                          </button>
-                          <button onClick={() => deleteRow(id)}
-                            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                            style={{ background: '#FEF2F2', color: '#DC2626' }}>
-                            <Trash2 className="h-2.5 w-2.5" />Delete
-                          </button>
-                        </div>
-                    }
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 // ── Returns ────────────────────────────────────────────────────────────────
-type ReturnSubTab = 'challans' | 'deductees'
-
 function ReturnsTab({ clients }: { clients: any[] }) {
-  const [client,    setClient]    = useState('')
-  const [quarter,   setQuarter]   = useState('')
-  const [formType,  setFormType]  = useState<FormType | ''>('')
-  const [importing, setImporting] = useState(false)
-  const [loaded,    setLoaded]    = useState(false)
-  const [subTab,    setSubTab]    = useState<ReturnSubTab>('challans')
-  const [challans,  setChallans]  = useState<ChallanRow[]>(MOCK_CHALLANS)
-  const [deductees, setDeductees] = useState<DeducteeRow[]>(MOCK_DEDUCTEES)
+  const [client,     setClient]     = useState('')
+  const [quarter,    setQuarter]    = useState('')
+  const [formType,   setFormType]   = useState<FormType | ''>('')
+  const [uploading,  setUploading]  = useState(false)
+  const [uploaded,   setUploaded]   = useState(false)
+  const [uploadedFile, setUploadedFile] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const canShow = !!client && !!quarter && !!formType
+  const canShow  = !!client && !!quarter && !!formType
+  const formData = canShow ? buildFormData(client, quarter, formType as FormType, clients) : null
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
-    setImporting(true)
-    toast.info(`Importing ${f.name}…`)
+    setUploading(true)
+    toast.info(`Uploading ${f.name}…`)
     setTimeout(() => {
-      setImporting(false)
-      setLoaded(true)
-      toast.success('TDS return data imported successfully')
-    }, 1600)
+      setUploading(false)
+      setUploaded(true)
+      setUploadedFile(f.name)
+      toast.success('FUV file uploaded & validated successfully')
+    }, 1500)
+  }
+
+  const handleReset = () => {
+    setClient(''); setQuarter(''); setFormType('')
+    setUploaded(false); setUploadedFile('')
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   const handleFormTypeChange = (v: string) => {
     setFormType(v as FormType | '')
-    setLoaded(false)
+    setUploaded(false); setUploadedFile('')
     if (fileRef.current) fileRef.current.value = ''
   }
 
   const tdsClients = (clients as any[]).filter((c: any) => c.tds_enabled)
 
-  const CHALLAN_COLS: { key: keyof ChallanRow; label: string; mono?: boolean }[] = [
-    { key: 'challan_no',    label: 'Challan No.',    mono: true },
-    { key: 'bsr',           label: 'BSR Code',       mono: true },
-    { key: 'deposit_date',  label: 'Deposit Date' },
-    { key: 'tan',           label: 'TAN',            mono: true },
-    { key: 'amount',        label: 'Amount (₹)',     mono: true },
-    { key: 'bank',          label: 'Bank Name' },
-    { key: 'status',        label: 'Status' },
-  ]
-  const DEDUCTEE_COLS: { key: keyof DeducteeRow; label: string; mono?: boolean }[] = [
-    { key: 'pan',     label: 'Deductee PAN', mono: true },
-    { key: 'name',    label: 'Name' },
-    { key: 'section', label: 'Section',      mono: true },
-    { key: 'amount',  label: 'Amount Paid (₹)', mono: true },
-    { key: 'tds',     label: 'TDS (₹)',      mono: true },
-    { key: 'rate',    label: 'Rate' },
-    { key: 'cert',    label: 'Certificate No.' },
-  ]
-
   return (
     <div className="space-y-4">
-      {/* Selection + Import bar */}
+      {/* Selection bar */}
       <ContentCard>
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Sel label="Client" value={client} onChange={v => { setClient(v); setLoaded(false) }}
+            <Sel label="Client" value={client} onChange={setClient}
               options={tdsClients.map((c: any) => ({ value: String(c.id), label: c.legal_name }))} />
-            <Sel label="Quarter" value={quarter} onChange={v => { setQuarter(v); setLoaded(false) }}
+            <Sel label="Quarter" value={quarter} onChange={setQuarter}
               options={QUARTERS.map(q => ({ value: q, label: q }))} />
             <Sel label="Form Type" value={formType} onChange={handleFormTypeChange}
               options={FORM_TYPES.map(f => ({ value: f, label: `${FORM_META[f].full} — ${FORM_META[f].desc}` }))} />
           </div>
 
-          {/* Import File (replaces Reset) */}
-          {canShow && !loaded && (
-            <div className="pt-3 flex items-center gap-3 flex-wrap" style={{ borderTop: `1px solid ${G.border}` }}>
-              <input ref={fileRef} type="file" className="hidden" accept=".txt,.fvu,.xlsx,.csv"
-                onChange={handleFileChange} />
-              <button onClick={() => !importing && fileRef.current?.click()}
-                className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-                style={{ background: importing ? G.secondary : '#0F172A', cursor: importing ? 'not-allowed' : 'pointer' }}>
-                {importing
-                  ? <><div className="h-3.5 w-3.5 rounded-full border-2 animate-spin"
-                      style={{ borderColor: '#fff', borderTopColor: 'transparent' }} />Importing…</>
-                  : <><Upload className="h-3.5 w-3.5" />Import File</>
-                }
-              </button>
-              <span className="text-xs" style={{ color: G.icon }}>
-                Upload TDS return data (.fvu / .txt / .xlsx) for {formType} — {quarter}
-              </span>
-            </div>
-          )}
-
-          {/* Loaded status */}
-          {loaded && (
-            <div className="pt-3 flex items-center justify-between" style={{ borderTop: `1px solid ${G.border}` }}>
+          {canShow && formData && (
+            <div className="pt-3 flex items-center justify-between flex-wrap gap-2"
+              style={{ borderTop: `1px solid ${G.border}` }}>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" style={{ color: '#16A34A' }} />
-                <span className="text-sm font-medium" style={{ color: G.primary }}>
-                  {FORM_META[formType as FormType]?.full}
-                  <span className="text-xs ml-1 font-normal" style={{ color: G.icon }}>
-                    ({FORM_META[formType as FormType]?.oldForm})
-                  </span> — {quarter}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                  style={{ background: '#F0FDF4', color: '#16A34A' }}>
-                  {challans.length} challans · {deductees.length} deductees
+                <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold"
+                  style={{ background: '#EFF6FF', color: '#1D4ED8' }}>
+                  <FileCheck className="h-3.5 w-3.5" />
+                  {FORM_META[formType as FormType].full} — {quarter}
                 </span>
               </div>
-              <OutlineBtn onClick={() => { setLoaded(false); if (fileRef.current) fileRef.current.value = '' }}>
-                <RotateCcw className="h-3.5 w-3.5" />Re-import
-              </OutlineBtn>
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 text-xs font-semibold"
+                style={{ color: G.secondary }}
+              >
+                <RotateCcw className="h-3 w-3" />Reset
+              </button>
             </div>
           )}
         </div>
       </ContentCard>
 
-      {/* Sub-tabs: TDS Challans | Deductee Details */}
-      {canShow && loaded && (
-        <div className="space-y-3">
-          {/* Sub-tab bar */}
-          <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: G.white, border: `1px solid ${G.border}` }}>
-            {([
-              { key: 'challans',  label: 'TDS Challans' },
-              { key: 'deductees', label: 'Deductee Details' },
-            ] as { key: ReturnSubTab; label: string }[]).map(t => (
-              <button key={t.key} onClick={() => setSubTab(t.key)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{
-                  background: subTab === t.key ? '#0F172A' : 'transparent',
-                  color:      subTab === t.key ? '#FFFFFF' : G.secondary,
-                }}>
-                {t.label}
-              </button>
-            ))}
+      {/* Form */}
+      {canShow && formData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+          {/* ── Left column ── */}
+          <div className="space-y-4">
+            {/* Deductor Details */}
+            <SectionCard title="Deductor Details" icon={Building2}>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <FormField label="TAN"              value={formData.tan}      mono />
+                <FormField label="PAN"              value={formData.pan}      mono />
+                <FormField label="Deductor Name"    value={formData.deductor} />
+                <FormField label="Category"         value={formData.category} />
+                <div className="col-span-2">
+                  <FormField label="Address" value={formData.address} />
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* Return Period */}
+            <SectionCard title="Return Period" icon={Calendar}>
+              <div className="grid grid-cols-3 gap-4">
+                <FormField label="Quarter"  value={formData.quarter} />
+                <FormField label="FY"       value={formData.fy} />
+                <FormField label="Period"   value={formData.period} />
+              </div>
+            </SectionCard>
+
+            {/* Challan Details */}
+            <SectionCard title="Challan Details" icon={ReceiptText}>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <FormField label="BSR Code"          value={formData.bsr}           mono />
+                <FormField label="Challan Date"       value={formData.challanDate} />
+                <FormField label="Challan Serial No"  value={formData.challanSerial} mono />
+                <FormField label="Minor Head of Pay." value={formData.minorHead}     mono />
+                <div className="col-span-2">
+                  <FormField label="Total Tax Deposited (₹)" value={formData.taxDeposited} mono />
+                </div>
+              </div>
+            </SectionCard>
           </div>
 
-          {/* Table card */}
-          <ContentCard>
-            <div className="p-4">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold" style={{ color: G.primary }}>
-                  {subTab === 'challans' ? 'TDS Challans' : 'Deductee Details'}
-                </h3>
-                <p className="text-xs mt-0.5" style={{ color: G.icon }}>
-                  {subTab === 'challans'
-                    ? 'Review and edit challan details before filing. All fields are editable.'
-                    : 'Review deductee-wise TDS deduction details. Modify and correct before submission.'}
-                </p>
+          {/* ── Right column ── */}
+          <div className="space-y-4">
+            {/* Summary */}
+            <SectionCard title="Deductee / Payment Summary" icon={Users}>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                {formData.employees !== undefined && (
+                  <><FormField label="No. of Employees"  value={String(formData.employees)} />
+                    <FormField label="Total Salary Paid (₹)" value={formData.totalSalary ?? '—'} mono /></>
+                )}
+                {formData.deductees !== undefined && (
+                  <><FormField label="No. of Deductees"    value={String(formData.deductees)} />
+                    <FormField label="Total Amount Paid (₹)" value={formData.totalAmount ?? '—'} mono /></>
+                )}
+                {formData.collectees !== undefined && (
+                  <><FormField label="No. of Collectees"       value={String(formData.collectees)} />
+                    <FormField label="Total Amount Collected (₹)" value={formData.totalCollection ?? '—'} mono /></>
+                )}
+                <FormField label="TDS / TCS Deducted (₹)" value={formData.tdsDeducted} mono />
+                <FormField label="TDS / TCS Deposited (₹)" value={formData.taxDeposited} mono />
+              </div>
+            </SectionCard>
+
+            {/* Section-wise (26Q, 27Q, 27EQ) */}
+            {formData.sections && formData.sections.length > 0 && (
+              <SectionCard title="Section-wise Payment Details" icon={FileCheck}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr style={{ background: G.canvas }}>
+                        {['Section', 'Nature of Payment', 'Amount Paid (₹)', 'Rate', 'TDS (₹)'].map(h => (
+                          <th key={h} className="text-left px-3 py-2 text-[10px] font-semibold border-b"
+                            style={{ color: G.secondary, borderColor: G.border }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.sections.map((s, i) => (
+                        <tr key={i} style={{ borderBottom: `1px solid ${G.border}` }}>
+                          <td className="px-3 py-2 font-mono font-semibold" style={{ color: G.primary }}>{s.section}</td>
+                          <td className="px-3 py-2" style={{ color: G.secondary }}>{s.nature}</td>
+                          <td className="px-3 py-2 font-mono" style={{ color: G.primary }}>₹{s.amount}</td>
+                          <td className="px-3 py-2 font-mono text-[10px]" style={{ color: G.icon }}>{s.rate}</td>
+                          <td className="px-3 py-2 font-mono font-semibold" style={{ color: '#0F172A' }}>₹{s.tds}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionCard>
+            )}
+
+            {/* File Upload */}
+            <div className="rounded-xl border p-4" style={{ background: G.white, borderColor: G.border }}>
+              <div className="flex items-center gap-2 mb-3 pb-3" style={{ borderBottom: `1px solid ${G.border}` }}>
+                <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: G.canvas }}>
+                  <Upload className="h-3.5 w-3.5" style={{ color: G.secondary }} />
+                </div>
+                <h4 className="text-sm font-semibold" style={{ color: G.primary }}>FUV File Upload</h4>
               </div>
 
-              {subTab === 'challans'
-                ? <EditableTable<ChallanRow>  cols={CHALLAN_COLS}  rows={challans}  onRowsChange={setChallans} />
-                : <EditableTable<DeducteeRow> cols={DEDUCTEE_COLS} rows={deductees} onRowsChange={setDeductees} />
-              }
-            </div>
-          </ContentCard>
+              <input ref={fileRef} type="file" className="hidden" accept=".txt,.fvu"
+                onChange={handleFileChange} />
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-3 justify-end pt-1">
-            <button onClick={() => toast.success('Draft saved successfully')}
-              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all"
-              style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE', color: '#2563EB' }}>
-              <Save className="h-4 w-4" />Save as Draft
-            </button>
-            <button onClick={() => toast.success('Return submitted for review')}
-              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all"
-              style={{ background: G.white, border: `1.5px solid ${G.border}`, color: G.secondary }}>
-              <Send className="h-4 w-4" />Submit
-            </button>
-            <button onClick={() => toast.success(`${FORM_META[formType as FormType]?.full} filed successfully for ${quarter}`)}
-              className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-              style={{ background: '#16A34A', boxShadow: '0 4px 12px rgba(22,163,74,0.3)' }}>
-              <FileCheck className="h-4 w-4" />File
-            </button>
+              {!uploaded ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs" style={{ color: G.secondary }}>
+                    Upload the FUV / text file generated from TDS RPU (Return Preparation Utility) software.
+                    Accepted formats: <span className="font-mono font-semibold">.txt</span>,{' '}
+                    <span className="font-mono font-semibold">.fvu</span>
+                  </p>
+                  <button
+                    onClick={() => !uploading && fileRef.current?.click()}
+                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-4 w-full transition-colors"
+                    style={{ borderColor: '#CBD5E1', background: G.canvas, cursor: uploading ? 'not-allowed' : 'pointer' }}
+                    onMouseEnter={e => !uploading && ((e.currentTarget as HTMLElement).style.borderColor = '#0584C7')}
+                    onMouseLeave={e => !uploading && ((e.currentTarget as HTMLElement).style.borderColor = '#CBD5E1')}
+                  >
+                    {uploading ? (
+                      <>
+                        <div className="h-4 w-4 rounded-full border-2 animate-spin"
+                          style={{ borderColor: '#0584C7', borderTopColor: 'transparent' }} />
+                        <span className="text-sm" style={{ color: G.secondary }}>Uploading…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" style={{ color: G.icon }} />
+                        <span className="text-sm font-medium" style={{ color: G.secondary }}>
+                          Click to select FUV file
+                        </span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-lg p-3" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: '#16A34A' }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold" style={{ color: '#15803D' }}>File validated successfully</p>
+                      <p className="text-[10px] font-mono truncate" style={{ color: '#166534' }}>{uploadedFile}</p>
+                    </div>
+                    <button
+                      onClick={() => { setUploaded(false); setUploadedFile(''); if (fileRef.current) fileRef.current.value = '' }}
+                      className="text-xs font-semibold flex-shrink-0"
+                      style={{ color: '#DC2626' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2 text-sm font-semibold text-white"
+                      style={{ background: '#0F172A' }}
+                      onClick={() => toast.success('Return submitted to TRACES portal')}
+                    >
+                      <FileCheck className="h-3.5 w-3.5" />
+                      Submit Return
+                    </button>
+                    <OutlineBtn onClick={() => toast.success('Downloaded acknowledgement')}>
+                      <Download className="h-3.5 w-3.5" />Ack
+                    </OutlineBtn>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -843,10 +777,7 @@ function ReconciliationTab({ clients }: { clients: any[] }) {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" style={{ color: '#16A34A' }} />
                 <span className="text-sm font-medium" style={{ color: G.primary }}>
-                  Reconciliation complete — {FORM_META[formType as FormType]?.full ?? formType}
-                  <span className="text-xs ml-1" style={{ color: G.icon }}>
-                    ({FORM_META[formType as FormType]?.oldForm ?? ''})
-                  </span> {quarter}
+                  Reconciliation complete — {FORM_META[formType as FormType]?.full ?? formType} {quarter}
                 </span>
               </div>
               <OutlineBtn onClick={() => { setImported(false); if (fileRef.current) fileRef.current.value = '' }}>

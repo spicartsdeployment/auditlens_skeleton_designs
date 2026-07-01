@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, ChevronRight, type LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Plus, ChevronRight } from 'lucide-react'
 import { clientsApi } from '@/shared/api/clients'
 import { filingsApi } from '@/shared/api/filings'
 import { Button } from '@/shared/components/Button'
@@ -19,7 +20,7 @@ import { toast } from 'sonner'
 
 interface ComplianceShellProps {
   title: string
-  icon: LucideIcon
+  icon: React.ElementType
   filingTypes: { value: FilingType; label: string; description: string }[]
   module: string
 }
@@ -40,8 +41,9 @@ function WorkflowStepper({ status }: { status: FilingStatus }) {
       {WORKFLOW_STEPS.map((step, i) => (
         <div key={step} className="flex items-center">
           <div
-            className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full"
-            style={i <= current ? { background: '#0F172A', color: '#FFFFFF' } : { background: '#F1F5F9', color: '#94A3B8' }}
+            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
+              i <= current ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-500'
+            }`}
             aria-current={i === current ? 'step' : undefined}
           >
             <span className="h-4 w-4 rounded-full flex items-center justify-center text-xs">
@@ -115,8 +117,8 @@ export function ComplianceShell({ title, icon: Icon, filingTypes, module }: Comp
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: '#F1F5F9' }}>
-            <Icon className="h-5 w-5" style={{ color: '#0584C7' }} aria-hidden />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50">
+            <Icon className="h-5 w-5 text-primary-600" aria-hidden />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
@@ -144,7 +146,7 @@ export function ComplianceShell({ title, icon: Icon, filingTypes, module }: Comp
       {/* Filing types overview */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {filingTypes.map((ft) => (
-          <Card key={ft.value} padding="sm" className="text-center cursor-pointer transition-colors hover:border-slate-400">
+          <Card key={ft.value} padding="sm" className="text-center cursor-pointer hover:border-primary-300 hover:bg-primary-50 transition-colors">
             <p className="text-sm font-semibold text-neutral-900">{ft.label}</p>
             <p className="text-xs text-neutral-500 mt-1">{ft.description}</p>
           </Card>
@@ -158,7 +160,7 @@ export function ComplianceShell({ title, icon: Icon, filingTypes, module }: Comp
         </CardHeader>
         {isLoading ? <SkeletonTable rows={4} /> : filings.length === 0 ? (
           <EmptyState
-            icon={Icon}
+            icon={Icon as LucideIcon}
             title="No filings yet"
             description={`Create a new ${title} filing to get started.`}
             action={{ label: 'New Filing', onClick: () => setCreateOpen(true) }}

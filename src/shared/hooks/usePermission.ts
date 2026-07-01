@@ -18,18 +18,15 @@ export function usePermission() {
     const override = user.permissions?.find((p) => p.screen === screen)
     if (override) return override.can_view
 
-    // Default RBAC
-    // Super Admin: firm management only — no operational filing/task work
+    // Super Admin: firm management only — no GST/TDS/Audit/Tasks operational modules
     const superAdminScreens = [
       'dashboard', 'workspace', 'clients', 'users', 'notices',
       'communication', 'documents', 'calendar', 'reports', 'subscription',
     ]
-    // Admin (CA): full operational access
     const adminScreens = [
       'dashboard', 'workspace', 'clients', 'tasks', 'gst', 'tds', 'audit',
       'users', 'communication', 'documents', 'calendar', 'reports', 'notices',
     ]
-    // Article: limited to assigned work
     const articleScreens = [
       'dashboard', 'workspace', 'tasks', 'gst', 'tds', 'audit',
       'communication', 'documents', 'calendar', 'notices',

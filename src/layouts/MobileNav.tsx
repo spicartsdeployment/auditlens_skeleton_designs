@@ -1,8 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Briefcase, CheckSquare,
-  MessageSquare, FileText, X, ReceiptText, Scale, Users, Settings,
-  FolderOpen, ShieldAlert, Layers, BarChart3,
+  LayoutDashboard, Briefcase, MessageSquare, FileText, X, ReceiptText, Scale, Users, Settings,
+  FolderOpen, Cpu,
 } from 'lucide-react'
 import { cn } from '@/shared/components/cn'
 import { usePermission } from '@/shared/hooks/usePermission'
@@ -21,22 +20,19 @@ export const useMobileMenuStore = create<MobileMenuStore>((set) => ({
 }))
 
 const bottomTabs = [
-  { to: '/',              label: 'Home',      icon: LayoutDashboard, screen: 'dashboard' },
-  { to: '/clients',       label: 'Clients',   icon: Briefcase,       screen: 'clients' },
-  { to: '/workspace',     label: 'Workspace', icon: Layers,          screen: 'workspace' },
-  { to: '/communication', label: 'Comms',     icon: MessageSquare,   screen: 'communication' },
+  { to: '/', label: 'Home', icon: LayoutDashboard, screen: 'dashboard' },
+  { to: '/clients', label: 'Clients', icon: Briefcase, screen: 'clients' },
+  { to: '/workcenter', label: 'Work', icon: Cpu, screen: 'workspace' },
+  { to: '/communication', label: 'Comms', icon: MessageSquare, screen: 'communication' },
 ]
 
 const drawerItems = [
-  { to: '/tasks',     label: 'Tasks',     icon: CheckSquare, screen: 'tasks' },
-  { to: '/gst',       label: 'GST',       icon: FileText,    screen: 'gst' },
-  { to: '/tds',       label: 'TDS',       icon: ReceiptText, screen: 'tds' },
-  { to: '/audit',     label: 'Audit',     icon: Scale,       screen: 'audit' },
-  { to: '/notices',   label: 'Notices',   icon: ShieldAlert, screen: 'notices' },
-  { to: '/documents', label: 'Documents', icon: FolderOpen,  screen: 'documents' },
-  { to: '/reports',   label: 'Reports',   icon: BarChart3,   screen: 'reports' },
-  { to: '/users',     label: 'Team',      icon: Users,       screen: 'users' },
-  { to: '/settings',  label: 'Settings',  icon: Settings,    screen: 'subscription' },
+  { to: '/gst', label: 'GST', icon: FileText, screen: 'gst' },
+  { to: '/tds', label: 'TDS', icon: ReceiptText, screen: 'tds' },
+  { to: '/audit', label: 'Audit', icon: Scale, screen: 'audit' },
+  { to: '/documents', label: 'Documents', icon: FolderOpen, screen: 'documents' },
+  { to: '/users', label: 'Team', icon: Users, screen: 'users' },
+  { to: '/settings', label: 'Settings', icon: Settings, screen: 'subscription' },
 ]
 
 export function MobileBottomNav() {

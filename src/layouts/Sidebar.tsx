@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, Briefcase, CheckSquare, MessageSquare,
-  FileText, ReceiptText, Scale, Settings, Layers, FolderOpen,
-  ShieldAlert, ChevronLeft, ChevronRight, Cpu,
+  LayoutDashboard, Users, Briefcase, MessageSquare,
+  FileText, ReceiptText, Scale, Settings, FolderOpen,
+  ChevronLeft, ChevronRight, Cpu,
 } from 'lucide-react'
 import { cn } from '@/shared/components/cn'
 import { usePermission } from '@/shared/hooks/usePermission'
@@ -74,7 +74,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside
-      className="hidden lg:flex flex-col py-4  h-full rounded-3xl shrink-0 shadow-sidebar transition-all duration-300"
+      className="hidden lg:flex flex-col py-4 my-auto h-[88%] rounded-3xl shrink-0 shadow-sidebar transition-all duration-300"
       style={{
         width: collapsed ? '64px' : '200px',
         background: 'linear-gradient(to bottom, #0f172a, #1e293b, #0f172a)',
@@ -83,7 +83,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       }}
       aria-label="Main navigation"
     >
-      {/* Logo + collapse toggle in same row */}
       <div className={cn('flex items-center mb-4 shrink-0 px-3', collapsed ? 'justify-between' : 'gap-2.5')}>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 shadow-lg border border-slate-700/60">
           <span className="text-xs font-black text-white tracking-tight">AL</span>
@@ -96,7 +95,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         )}
 
-        {/* Collapse / expand toggle — icon only, always visible */}
         <button
           onClick={onToggle}
           title={collapsed ? 'Expand' : 'Collapse'}
@@ -110,7 +108,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </button>
       </div>
 
-      {/* Nav items */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar px-2.5" role="navigation" aria-label="App navigation">
         <ul className={cn('flex flex-col gap-0.5', collapsed ? 'items-center' : 'items-stretch')}>
           {renderItems()}

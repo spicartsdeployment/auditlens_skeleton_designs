@@ -20,21 +20,15 @@ export function AppShell() {
       className="flex flex-col h-dvh overflow-hidden p-3 gap-3"
       style={{ backgroundColor: 'var(--color-bg)' }}
     >
-      {/* Full-width floating topbar */}
       <TopBar alertCount={alerts.length} />
 
-      {/* Body: sidebar + main aligned in same row */}
       <div className="flex flex-1 min-h-0 gap-3">
-        {/* Desktop sidebar */}
         <Sidebar
           collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((o) => !o)}
+          onToggle={() => setSidebarCollapsed(o => !o)}
         />
-
-        {/* Mobile drawer overlay */}
         <MobileDrawer />
 
-        {/* Main column */}
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden gap-3">
           <main
             id="main-content"
@@ -48,8 +42,6 @@ export function AppShell() {
           >
             <Outlet />
           </main>
-
-          {/* Mobile bottom nav */}
           <MobileBottomNav />
         </div>
       </div>

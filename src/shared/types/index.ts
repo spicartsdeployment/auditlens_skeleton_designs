@@ -123,7 +123,7 @@ export interface Message {
   id: number
   thread_id: number
   sender_id: number
-  content: string
+  content?: string
   file_name?: string
   is_read: boolean
   created_at: string

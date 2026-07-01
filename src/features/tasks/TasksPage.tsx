@@ -82,8 +82,8 @@ function TaskCard({ task, onStatusChange }: { task: Task; onStatusChange: (id: n
           </div>
           <div className="h-1.5 w-full rounded-full bg-neutral-200" aria-hidden>
             <div
-              className="h-1.5 rounded-full transition-all"
-              style={{ background: '#0F172A', width: `${total > 0 ? (uploaded / total) * 100 : 0}%` }}
+              className="h-1.5 rounded-full bg-primary-600 transition-all"
+              style={{ width: `${total > 0 ? (uploaded / total) * 100 : 0}%` }}
             />
           </div>
         </div>
@@ -172,16 +172,14 @@ export function TasksPage() {
           <div className="flex rounded-lg border border-neutral-200 overflow-hidden" role="group" aria-label="View toggle">
             <button
               onClick={() => setView('kanban')}
-              className={`px-3 py-2 text-sm transition-colors`}
-              style={view === 'kanban' ? { background: '#F1F5F9', color: '#0F172A' } : { color: '#64748B' }}
+              className={`px-3 py-2 text-sm ${view === 'kanban' ? 'bg-primary-50 text-primary-700' : 'text-neutral-600 hover:bg-neutral-50'}`}
               aria-pressed={view === 'kanban'}
             >
               <LayoutGrid className="h-4 w-4" aria-hidden /> <span className="sr-only">Kanban</span>
             </button>
             <button
               onClick={() => setView('list')}
-              className={`px-3 py-2 text-sm transition-colors`}
-              style={view === 'list' ? { background: '#F1F5F9', color: '#0F172A' } : { color: '#64748B' }}
+              className={`px-3 py-2 text-sm ${view === 'list' ? 'bg-primary-50 text-primary-700' : 'text-neutral-600 hover:bg-neutral-50'}`}
               aria-pressed={view === 'list'}
             >
               <List className="h-4 w-4" aria-hidden /> <span className="sr-only">List</span>

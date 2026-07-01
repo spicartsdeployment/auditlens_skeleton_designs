@@ -1,1351 +1,2151 @@
 /**
- * Organization Onboarding Wizard — 16 Steps
- * Layout: Horizontal stepper on top + full-width form body
+ * Client Onboarding Wizard — 7 Steps
+ * Layout: Horizontal stepper (top) + form card (full width)
  */
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Building2, MapPin, Users, GitBranch, Receipt, Settings,
-  Calculator, FileText, Shield, UserPlus, ClipboardList,
-  BarChart2, BookOpen, Bell, FolderOpen, CheckCircle2,
-  ChevronRight, ChevronLeft, Check, Plus, Trash2, Eye, EyeOff,
-  AlertCircle, Save,
-} from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  Check, ChevronRight, ChevronLeft, Plus, Trash2, Eye, EyeOff,
+  Upload, Building2, Phone, Mail, MapPin, FileText, Shield,
+  AlertCircle, Copy, X, Info, Settings, Users, Bell,
+  MessageSquare, Smartphone, Globe, FolderOpen,
+} from 'lucide-react'
+import { MOCK_USERS } from '@/mock/data'
+import type { User } from '@/shared/types'
 
 // ─── Design tokens ───────────────────────────────────────────────────────────
 const G = {
-  canvas: '#F0F4F8',
+  canvas: '#F8FAFC',
   white: '#FFFFFF',
-  border: '#D8E3ED',
-  borderHov: '#B0C4D8',
-  muted: '#8FA3B8',
-  secondary: '#4A6080',
-  primary: '#0D1F35',
-  accent: '#0A84D0',
-  accentHov: '#0870B0',
-  accentFg: '#FFFFFF',
-  success: '#12A87A',
-  divider: '#E4EDF5',
+  border: '#E2E8F0',
+  muted: '#94A3B8',
+  secondary: '#475569',
+  primary: '#0F172A',
+  accent: '#0584C7',
 } as const
 
-// ─── Step metadata ───────────────────────────────────────────────────────────
-const STEPS = [
-  { id: 1, label: 'Organization', fullLabel: 'Organization Details', icon: Building2, group: 'Organization' },
-  { id: 2, label: 'Address', fullLabel: 'Registered Address', icon: MapPin, group: 'Organization' },
-  { id: 3, label: 'KMPs', fullLabel: 'Key Management Persons', icon: Users, group: 'Organization' },
-  { id: 4, label: 'Branches', fullLabel: 'Branch Details', icon: GitBranch, group: 'Organization' },
-  { id: 5, label: 'GST Reg.', fullLabel: 'GST Registration', icon: Receipt, group: 'GST' },
-  { id: 6, label: 'GST Filing', fullLabel: 'GST Filing Configuration', icon: Settings, group: 'GST' },
-  { id: 7, label: 'TDS Config', fullLabel: 'TDS Configuration', icon: Calculator, group: 'TDS & IT' },
-  { id: 8, label: 'TDS Filing', fullLabel: 'TDS Filing Configuration', icon: FileText, group: 'TDS & IT' },
-  { id: 9, label: 'Income Tax', fullLabel: 'Income Tax Configuration', icon: Shield, group: 'TDS & IT' },
-  { id: 10, label: 'Admin User', fullLabel: 'Client Admin Creation', icon: UserPlus, group: 'Admin' },
-  { id: 11, label: 'Audit Clauses', fullLabel: 'Audit Clause Configuration', icon: ClipboardList, group: 'Audit' },
-  { id: 12, label: 'Audit Apply', fullLabel: 'Audit Applicability', icon: BarChart2, group: 'Audit' },
-  { id: 13, label: 'Compliance', fullLabel: 'Compliance Configuration', icon: BookOpen, group: 'Audit' },
-  { id: 14, label: 'Communication', fullLabel: 'Communication Preferences', icon: Bell, group: 'Preferences' },
-  { id: 15, label: 'Documents', fullLabel: 'Document Preferences', icon: FolderOpen, group: 'Preferences' },
-  { id: 16, label: 'Review', fullLabel: 'Review & Submit', icon: CheckCircle2, group: 'Review' },
-] as const
+// ─── Static data ─────────────────────────────────────────────────────────────
+const ORG_TYPES = [
+  'Individual', 'Proprietorship', 'Partnership Firm', 'LLP',
+  'Private Limited Company', 'Public Limited Company', 'OPC',
+  'Trust', 'Society', 'HUF', 'AOP', 'Government', 'Others',
+]
+
+const NATURE_OF_BUSINESS = [
+  'Manufacturing', 'Trading', 'Service', 'Works Contract', 'Construction',
+  'Professional Services', 'Healthcare', 'Education', 'Hospitality',
+  'Transportation', 'Real Estate', 'Agriculture', 'Finance', 'IT',
+  'E-Commerce', 'Export', 'Import', 'NGO', 'Government', 'Others',
+]
+
+const INDUSTRIES = [
+  'Automobile', 'Banking', 'Chemical', 'Construction', 'Education',
+  'Engineering', 'FMCG', 'Food Processing', 'Healthcare', 'Hospitality',
+  'IT & Software', 'Jewellery', 'Logistics', 'Manufacturing', 'Media',
+  'Mining', 'Oil & Gas', 'Pharmaceutical', 'Power', 'Retail',
+  'Telecommunication', 'Textile', 'Travel & Tourism', 'Wholesale', 'Others',
+]
+
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+]
+
+const DESIGNATION_MAP: Record<string, string[]> = {
+  'Private Limited Company': ['Managing Director', 'Director', 'CEO', 'CFO', 'Company Secretary', 'Accounts Manager', 'Finance Manager', 'Authorized Signatory'],
+  'Public Limited Company': ['Managing Director', 'Director', 'CEO', 'CFO', 'Company Secretary', 'Accounts Manager', 'Finance Manager', 'Authorized Signatory'],
+  'OPC': ['Managing Director', 'Director', 'CEO', 'CFO', 'Company Secretary', 'Accounts Manager', 'Finance Manager', 'Authorized Signatory'],
+  'LLP': ['Designated Partner', 'Partner', 'Finance Manager', 'Authorized Signatory'],
+  'Partnership Firm': ['Managing Partner', 'Partner', 'Accounts Manager', 'Authorized Signatory'],
+  'Proprietorship': ['Proprietor', 'Accounts Manager', 'Authorized Representative'],
+  'Trust': ['Managing Trustee', 'Trustee', 'Secretary', 'Treasurer'],
+  'Society': ['President', 'Vice President', 'Secretary', 'Treasurer', 'Executive Member'],
+}
+
+const DEFAULT_DESIGNATIONS = ['Director', 'Manager', 'Accounts Manager', 'Authorized Signatory']
+
+const REGISTRATIONS = [
+  { id: 'GST', label: 'GST', icon: '🧾' },
+  { id: 'TAN', label: 'TAN', icon: '📋' },
+  { id: 'MSME', label: 'MSME', icon: '🏭' },
+  { id: 'IEC', label: 'IEC', icon: '🌐' },
+  { id: 'EPF', label: 'EPF', icon: '👥' },
+  { id: 'ESI', label: 'ESI', icon: '🏥' },
+  { id: 'PT', label: 'Professional Tax', icon: '💼' },
+  { id: 'FSSAI', label: 'FSSAI', icon: '🍽️' },
+  { id: 'SE', label: 'Shop & Establishment', icon: '🏪' },
+  { id: 'FL', label: 'Factory License', icon: '🏗️' },
+  { id: 'TL', label: 'Trade License', icon: '📜' },
+  { id: 'RERA', label: 'RERA', icon: '🏢' },
+  { id: 'SEBI', label: 'SEBI', icon: '📈' },
+  { id: '12A', label: '12A', icon: '📄' },
+  { id: '80G', label: '80G', icon: '💰' },
+  { id: 'NGO', label: 'NGO Darpan', icon: '🤝' },
+  { id: 'OTH', label: 'Others', icon: '➕' },
+]
+
+const GST_STATE_CODES: Record<string, string> = {
+  '01': 'Jammu and Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab',
+  '04': 'Chandigarh', '05': 'Uttarakhand', '06': 'Haryana', '07': 'Delhi',
+  '08': 'Rajasthan', '09': 'Uttar Pradesh', '10': 'Bihar', '11': 'Sikkim',
+  '12': 'Arunachal Pradesh', '13': 'Nagaland', '14': 'Manipur', '15': 'Mizoram',
+  '16': 'Tripura', '17': 'Meghalaya', '18': 'Assam', '19': 'West Bengal',
+  '20': 'Jharkhand', '21': 'Odisha', '22': 'Chhattisgarh', '23': 'Madhya Pradesh',
+  '24': 'Gujarat', '26': 'Dadra and Nagar Haveli and Daman and Diu', '27': 'Maharashtra',
+  '28': 'Andhra Pradesh', '29': 'Karnataka', '30': 'Goa', '31': 'Lakshadweep',
+  '32': 'Kerala', '33': 'Tamil Nadu', '34': 'Puducherry', '35': 'Andaman and Nicobar Islands',
+  '36': 'Telangana', '37': 'Andhra Pradesh',
+}
+
+const STEPS_META = [
+  { id: 1, label: 'Basic Information', icon: Building2 },
+  { id: 2, label: 'Contact Information', icon: Phone },
+  { id: 3, label: 'Address', icon: MapPin },
+  { id: 4, label: 'Organization Details', icon: FileText },
+  { id: 5, label: 'Business & Tax Registrations', icon: Shield },
+  { id: 6, label: 'Registration Details', icon: Mail },
+  { id: 7, label: 'Settings Profile', icon: Settings },
+]
+
+const FY_OPTIONS = ['2025-26', '2024-25', '2023-24']
+
+type CommMode = 'whatsapp' | 'email' | 'portal' | 'internal'
+type ModuleKey = 'gst' | 'tds' | 'audit'
+
+interface ModuleDoc {
+  id: string
+  name: string
+  required: boolean
+}
+
+const COMM_MODES: { id: CommMode; label: string; icon: typeof MessageSquare; desc: string }[] = [
+  { id: 'whatsapp', label: 'WhatsApp', icon: Smartphone, desc: 'Client WhatsApp for reminders & doc requests' },
+  { id: 'email', label: 'Email', icon: Mail, desc: 'Official email communication' },
+  { id: 'portal', label: 'Client Portal', icon: Globe, desc: 'Secure portal uploads & messaging' },
+  { id: 'internal', label: 'In-App Only', icon: MessageSquare, desc: 'Firm team handles all client touchpoints' },
+]
+
+const MODULE_DOC_TEMPLATES: Record<ModuleKey, { name: string; defaultRequired: boolean }[]> = {
+  gst: [
+    { name: 'Sales Invoices / GSTR-1 Data', defaultRequired: true },
+    { name: 'Purchase Register', defaultRequired: true },
+    { name: 'Bank Statement', defaultRequired: true },
+    { name: 'Credit / Debit Notes', defaultRequired: false },
+    { name: 'E-way Bills Summary', defaultRequired: false },
+  ],
+  tds: [
+    { name: 'TDS Deduction Statement', defaultRequired: true },
+    { name: 'Challan Payment Proofs', defaultRequired: true },
+    { name: 'Salary Register (24Q)', defaultRequired: true },
+    { name: 'Vendor Master with PAN', defaultRequired: true },
+    { name: 'Form 16 / 16A Copies', defaultRequired: false },
+  ],
+  audit: [
+    { name: 'Trial Balance', defaultRequired: true },
+    { name: 'Fixed Assets Register', defaultRequired: true },
+    { name: 'Bank Statements (All Accounts)', defaultRequired: true },
+    { name: 'Board Minutes', defaultRequired: true },
+    { name: 'Loan Agreements', defaultRequired: false },
+    { name: 'Inventory Valuation Report', defaultRequired: false },
+  ],
+}
+
+function defaultModuleDocs(module: ModuleKey): ModuleDoc[] {
+  return MODULE_DOC_TEMPLATES[module].map(t => ({
+    id: uid(),
+    name: t.name,
+    required: t.defaultRequired,
+  }))
+}
+
+function buildModuleDocsMap(gst: boolean, tds: boolean, audit: boolean, prev: Partial<Record<ModuleKey, ModuleDoc[]>> = {}) {
+  const next: Partial<Record<ModuleKey, ModuleDoc[]>> = { ...prev }
+  if (gst && !next.gst) next.gst = defaultModuleDocs('gst')
+  if (!gst) delete next.gst
+  if (tds && !next.tds) next.tds = defaultModuleDocs('tds')
+  if (!tds) delete next.tds
+  if (audit && !next.audit) next.audit = defaultModuleDocs('audit')
+  if (!audit) delete next.audit
+  return next as Record<ModuleKey, ModuleDoc[]>
+}
+
+interface SettingsProfile {
+  gstEnabled: boolean
+  tdsEnabled: boolean
+  auditEnabled: boolean
+  assignedAdminId: string
+  assignedArticleId: string
+  financialYear: string
+  clientActive: boolean
+  notifyFilingReminders: boolean
+  notifyDocRequests: boolean
+  notifyNoticeAlerts: boolean
+  clientPortalAccess: boolean
+  primaryCommMode: CommMode
+  commWhatsAppEnabled: boolean
+  commEmailEnabled: boolean
+  commPortalEnabled: boolean
+  commInternalEnabled: boolean
+  whatsappNumber: string
+  whatsappAutoReply: boolean
+  emailPrimary: string
+  emailCc: string
+  emailAutoAck: boolean
+  portalInviteEmail: string
+  commPreferredLanguage: string
+  commBusinessHoursOnly: boolean
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-interface KMP {
-  id: string; full_name: string; designation: string; email: string; mobile: string
-  din: string; dob: string; is_primary: boolean; is_signatory: boolean
+interface GSTEntry {
+  id: string
+  gstin: string
+  state: string
+  regType: string
+  filingFrequency: string
+  username: string
+  password: string
+  gstr1Due?: string
+  gstr3bDue?: string
+  gstr9Due?: string
 }
-interface Branch {
-  id: string; name: string; code: string; state: string; address: string
-  contact_person: string; contact_number: string; email: string
-  gst_applicable: boolean; tds_applicable: boolean; audit_applicable: string; status: 'active' | 'inactive'
+
+interface BranchAddress {
+  id: string
+  address: string
+  city: string
+  state: string
+  pincode: string
+  country: string
 }
-interface GSTReg {
-  id: string; gstin: string; registration_type: string; state: string; branch: string
-  registration_date: string; gst_status: string; authorized_signatory: string
-  eway_bill: boolean; reconciliation: boolean
+
+interface ContactPerson {
+  id: string
+  name: string
+  designation: string
+  mobile: string
+  email: string
 }
 
 interface FormState {
-  legal_name: string; trade_name: string; pan: string; org_type: string; cin: string
-  email: string; mobile: string; website: string; fy_start: string; fy_end: string
-  incorporation_date: string; nature_of_business: string; industry_type: string
-  msme_registered: boolean; msme_number: string
-  addr_line1: string; addr_line2: string; landmark: string; city: string
-  district: string; state: string; country: string; pincode: string
-  addr_type: string; google_location: string
-  kmps: KMP[]
-  branches: Branch[]
-  gst_registrations: GSTReg[]
-  state_code: string; sez_payer: boolean; einvoicing: boolean
-  gst_frequency: string; gst_return_types: string[]
-  gst_username: string; gst_password: string; gst_mobile: string; gst_email: string
-  gst_reviewer: string; gst_approver: string
-  tds_name: string; tds_branch: string; tds_state: string; pao_code: string
-  pao_reg_no: string; tds_portal_username: string; tds_portal_password: string
-  premises_name: string; area_location: string; tds_pincode: string
-  telephone: string; ministry_dept: string; ddo_code: string; ddo_reg_no: string
-  tds_reconciliation: boolean; flat_no: string; road_street: string
-  tds_city: string; tds_district: string; tds_state2: string; tds_email: string
-  tan: string; deductor_type: string; effective_date: string; tds_applicable: boolean
-  tds_sections: string[]; tds_return_types: string[]
-  traces_username: string; traces_password: string
-  traces_mobile: string; traces_email: string
-  tds_reviewer: string; tds_approver: string
-  it_pan: string; it_username: string; it_password: string
-  it_mobile: string; it_email: string
-  it_reviewer: string; it_approver: string
-  admin_name: string; admin_email: string; admin_mobile: string
-  admin_designation: string; admin_password: string
-  enabled_clauses: string[]; disabled_clauses: string[]; custom_clauses: string[]
-  clause_version: string; clause_fy: string
-  tax_audit_applicable: boolean; statutory_audit_applicable: boolean
-  audit_frequency: string; audit_reviewer: string; audit_approver: string; audit_due_date: string
-  compliance_masters: string[]
-  email_notifications: boolean; whatsapp_notifications: boolean; portal_notifications: boolean
-  auto_doc_requests: boolean; reminder_notifications: boolean
-  reminder_frequency: string; escalation_days: string; doc_categories: string[]
+  // Step 1
+  clientName: string
+  displayName: string
+  orgType: string
+  natureOfBusiness: string
+  industry: string
+  panNumber: string
+  panHolderName: string
+  primaryContactName: string
+  primaryMobile: string
+  primaryEmail: string
+  // Step 2 – Primary Contact
+  pc_name: string
+  pc_designation: string
+  pc_mobile: string
+  pc_email: string
+  // Step 2 – Secondary Contact
+  sc_name: string
+  sc_designation: string
+  sc_mobile: string
+  sc_email: string
+  // Step 3
+  regAddress: string
+  city: string
+  state: string
+  pincode: string
+  country: string
+  // Step 4
+  cin: string
+  dateOfIncorporation: string
+  authorizedCapital: string
+  paidUpCapital: string
+  llpin: string
+  firmRegNumber: string
+  partnershipDeedDate: string
+  proprietorName: string
+  proprietorAadhaar: string
+  trustRegNumber: string
+  trustRegDate: string
+  societyRegNumber: string
+  // Step 6
+  tanNumber: string
+  tanPassword: string
+  msmeNumber: string
+  iecNumber: string
+  epfNumber: string
+  epfUsername: string
+  epfPassword: string
+  esiNumber: string
+  esiUsername: string
+  esiPassword: string
+  ptNumber: string
+  fssaiNumber: string
+  seNumber: string
+  otherRegName: string
+  otherRegNumber: string
 }
 
-const INITIAL_KMP = (): KMP => ({
-  id: Math.random().toString(36).slice(2), full_name: '', designation: '', email: '',
-  mobile: '', din: '', dob: '', is_primary: false, is_signatory: false,
-})
-const INITIAL_BRANCH = (): Branch => ({
-  id: Math.random().toString(36).slice(2), name: '', code: '', state: '', address: '',
-  contact_person: '', contact_number: '', email: '', gst_applicable: true,
-  tds_applicable: true, audit_applicable: '', status: 'active',
-})
-const INITIAL_GST_REG = (): GSTReg => ({
-  id: Math.random().toString(36).slice(2), gstin: '', registration_type: '', state: '',
-  branch: '', registration_date: '', gst_status: 'Active', authorized_signatory: '',
-  eway_bill: false, reconciliation: true,
-})
-
-const INIT: FormState = {
-  legal_name: '', trade_name: '', pan: '', org_type: '', cin: '',
-  email: '', mobile: '', website: '', fy_start: '04', fy_end: '03',
-  incorporation_date: '', nature_of_business: '', industry_type: '',
-  msme_registered: false, msme_number: '',
-  addr_line1: '', addr_line2: '', landmark: '', city: '', district: '',
-  state: '', country: 'India', pincode: '', addr_type: 'Registered Office', google_location: '',
-  kmps: [INITIAL_KMP()],
-  branches: [],
-  gst_registrations: [INITIAL_GST_REG()],
-  state_code: '', sez_payer: false, einvoicing: false,
-  gst_frequency: 'Monthly', gst_return_types: ['GSTR1', 'GSTR3B'],
-  gst_username: '', gst_password: '', gst_mobile: '', gst_email: '',
-  gst_reviewer: '', gst_approver: '',
-  tds_name: '', tds_branch: '', tds_state: '', pao_code: '', pao_reg_no: '',
-  tds_portal_username: '', tds_portal_password: '', premises_name: '', area_location: '',
-  tds_pincode: '', telephone: '', ministry_dept: '', ddo_code: '', ddo_reg_no: '',
-  tds_reconciliation: true, flat_no: '', road_street: '', tds_city: '', tds_district: '',
-  tds_state2: '', tds_email: '', tan: '', deductor_type: '', effective_date: '', tds_applicable: true,
-  tds_sections: ['194C', '194J'], tds_return_types: ['26Q'],
-  traces_username: '', traces_password: '', traces_mobile: '', traces_email: '',
-  tds_reviewer: '', tds_approver: '',
-  it_pan: '', it_username: '', it_password: '', it_mobile: '', it_email: '',
-  it_reviewer: '', it_approver: '',
-  admin_name: '', admin_email: '', admin_mobile: '', admin_designation: '', admin_password: '',
-  enabled_clauses: ['3(i)(a)', '3(ii)(a)', '3(iii)', '3(vii)(a)', '3(ix)', '3(xi)'],
-  disabled_clauses: [], custom_clauses: [], clause_version: '1.0', clause_fy: '2025-26',
-  tax_audit_applicable: false, statutory_audit_applicable: true,
-  audit_frequency: 'Financial Year', audit_reviewer: '', audit_approver: '', audit_due_date: '',
-  compliance_masters: ['GST Return Types', 'TDS Return Types', 'TDS Sections', 'Audit Types', 'Notice Types'],
-  email_notifications: true, whatsapp_notifications: true, portal_notifications: true,
-  auto_doc_requests: true, reminder_notifications: true,
-  reminder_frequency: 'Weekly', escalation_days: '7',
-  doc_categories: ['GST', 'TDS', 'Financial Statements', 'Bank Statements'],
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function uid() {
+  return Math.random().toString(36).slice(2, 9)
 }
 
-// ─── Reusable atoms ──────────────────────────────────────────────────────────
-function F({ label, required, children, hint }: {
-  label: string; required?: boolean; children: React.ReactNode; hint?: string
-}) {
+function getDesignations(orgType: string): string[] {
+  return DESIGNATION_MAP[orgType] ?? DEFAULT_DESIGNATIONS
+}
+
+function getGSTState(gstin: string): string {
+  const code = gstin.slice(0, 2)
+  return GST_STATE_CODES[code] ?? ''
+}
+
+// ─── UI Primitives ───────────────────────────────────────────────────────────
+function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold" style={{ color: G.secondary }}>
-        {label}{required && <span className="ml-0.5 font-bold" style={{ color: '#E53935' }}>*</span>}
-      </label>
+    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: G.secondary, marginBottom: 4 }}>
       {children}
-      {hint && <p className="text-[10px]" style={{ color: G.muted }}>{hint}</p>}
-    </div>
+      {required && <span style={{ color: '#EF4444', marginLeft: 2 }}>*</span>}
+    </label>
   )
 }
 
-function TI({ value, onChange, placeholder, type = 'text', disabled }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; disabled?: boolean
+function Input({
+  value, onChange, placeholder, type = 'text', readOnly, maxLength, style,
+}: {
+  value: string
+  onChange?: (v: string) => void
+  placeholder?: string
+  type?: string
+  readOnly?: boolean
+  maxLength?: number
+  style?: React.CSSProperties
 }) {
   return (
     <input
-      type={type} value={value} placeholder={placeholder} disabled={disabled}
-      onChange={e => onChange(e.target.value)}
-      className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all"
+      type={type}
+      value={value}
+      onChange={e => onChange?.(e.target.value)}
+      placeholder={placeholder}
+      readOnly={readOnly}
+      maxLength={maxLength}
       style={{
-        background: disabled ? G.canvas : G.white,
-        border: `1.5px solid ${G.border}`,
-        color: G.primary,
-        boxShadow: '0 1px 2px rgba(13,31,53,0.04)',
-      }}
-      onFocus={e => {
-        e.currentTarget.style.borderColor = G.accent
-        e.currentTarget.style.boxShadow = `0 0 0 3px ${G.accent}22, 0 1px 2px rgba(13,31,53,0.04)`
-      }}
-      onBlur={e => {
-        e.currentTarget.style.borderColor = G.border
-        e.currentTarget.style.boxShadow = '0 1px 2px rgba(13,31,53,0.04)'
+        width: '100%', boxSizing: 'border-box',
+        padding: '8px 12px', borderRadius: 8,
+        border: `1px solid ${G.border}`,
+        fontSize: 14, color: G.primary, background: readOnly ? G.canvas : G.white,
+        outline: 'none', fontFamily: 'Inter, sans-serif',
+        ...style,
       }}
     />
   )
 }
 
-function Sel({ value, onChange, options, placeholder }: {
-  value: string; onChange: (v: string) => void; options: string[]; placeholder?: string
+function Textarea({
+  value, onChange, placeholder, rows = 3,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  rows?: number
 }) {
   return (
-    <div className="relative">
-      <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none appearance-none pr-9 transition-all"
-        style={{
-          background: G.white, border: `1.5px solid ${G.border}`,
-          color: value ? G.primary : G.muted,
-          boxShadow: '0 1px 2px rgba(13,31,53,0.04)',
-        }}
-        onFocus={e => { e.currentTarget.style.borderColor = G.accent }}
-        onBlur={e => { e.currentTarget.style.borderColor = G.border }}>
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map(o => <option key={o} value={o} style={{ color: G.primary }}>{o}</option>)}
-      </select>
-      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2.5 4.5L6 8L9.5 4.5" stroke={G.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-    </div>
+    <textarea
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      style={{
+        width: '100%', boxSizing: 'border-box',
+        padding: '8px 12px', borderRadius: 8,
+        border: `1px solid ${G.border}`,
+        fontSize: 14, color: G.primary, background: G.white,
+        outline: 'none', fontFamily: 'Inter, sans-serif', resize: 'vertical',
+      }}
+    />
   )
 }
 
-function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <div className="flex items-center justify-between py-3 px-4 rounded-lg cursor-pointer select-none transition-all"
-      style={{ background: value ? G.accent + '0D' : G.white, border: `1.5px solid ${value ? G.accent + '55' : G.border}` }}
-      onClick={() => onChange(!value)}>
-      <span className="text-sm font-medium" style={{ color: G.primary }}>{label}</span>
-      <div className="relative flex h-5 w-9 shrink-0 items-center rounded-full transition-all"
-        style={{ background: value ? G.accent : '#C8D6E5' }}>
-        <span className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform"
-          style={{ transform: value ? 'translateX(18px)' : 'translateX(2px)' }} />
-      </div>
-    </div>
-  )
-}
-
-function MultiSelect({ options, value, onChange }: {
-  options: string[]; value: string[]; onChange: (v: string[]) => void
+function Select({
+  value, onChange, options, placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: string[]
+  placeholder?: string
 }) {
-  const toggle = (o: string) => onChange(value.includes(o) ? value.filter(x => x !== o) : [...value, o])
   return (
-    <div className="flex flex-wrap gap-2 p-3 rounded-lg" style={{ background: G.canvas, border: `1.5px solid ${G.border}` }}>
-      {options.map(o => (
-        <button key={o} type="button" onClick={() => toggle(o)}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-          style={{
-            background: value.includes(o) ? G.accent : G.white,
-            color: value.includes(o) ? G.accentFg : G.secondary,
-            border: `1px solid ${value.includes(o) ? G.accent : G.border}`,
-            boxShadow: value.includes(o) ? `0 2px 6px ${G.accent}44` : 'none',
-          }}>
-          {value.includes(o) && <Check className="h-2.5 w-2.5" />}{o}
-        </button>
-      ))}
-    </div>
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        width: '100%', boxSizing: 'border-box',
+        padding: '8px 12px', borderRadius: 8,
+        border: `1px solid ${G.border}`,
+        fontSize: 14, color: value ? G.primary : G.muted, background: G.white,
+        outline: 'none', fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+      }}
+    >
+      <option value="">{placeholder ?? 'Select…'}</option>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
   )
 }
 
-function PwdInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function PasswordInput({
+  value, onChange, id, placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  id: string
+  placeholder?: string
+}) {
   const [show, setShow] = useState(false)
   return (
-    <div className="relative">
-      <input type={show ? 'text' : 'password'} value={value} placeholder={placeholder}
+    <div style={{ position: 'relative' }}>
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full rounded-lg px-3.5 py-2.5 pr-10 text-sm outline-none transition-all"
-        style={{ background: G.white, border: `1.5px solid ${G.border}`, color: G.primary, boxShadow: '0 1px 2px rgba(13,31,53,0.04)' }}
-        onFocus={e => { e.currentTarget.style.borderColor = G.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${G.accent}22` }}
-        onBlur={e => { e.currentTarget.style.borderColor = G.border; e.currentTarget.style.boxShadow = '0 1px 2px rgba(13,31,53,0.04)' }} />
-      <button type="button" onClick={() => setShow(v => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2">
-        {show ? <EyeOff className="h-4 w-4" style={{ color: G.muted }} /> : <Eye className="h-4 w-4" style={{ color: G.muted }} />}
-      </button>
-    </div>
-  )
-}
-
-function SectionHead({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="mb-6 pb-4" style={{ borderBottom: `1px solid ${G.divider}` }}>
-      <h3 className="text-base font-bold" style={{ color: G.primary }}>{title}</h3>
-      {sub && <p className="text-xs mt-1.5" style={{ color: G.muted }}>{sub}</p>}
-    </div>
-  )
-}
-
-function Grid({ cols = 2, children }: { cols?: number; children: React.ReactNode }) {
-  return <div className={`grid grid-cols-1 md:grid-cols-${cols} gap-5`}>{children}</div>
-}
-
-const INDIAN_STATES = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
-  'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-  'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-  'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh',
-  'Uttarakhand', 'West Bengal', 'Delhi', 'Jammu & Kashmir', 'Ladakh',
-  'Puducherry', 'Chandigarh', 'Lakshadweep', 'Andaman & Nicobar Islands',
-]
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HORIZONTAL STEPPER
-// ═══════════════════════════════════════════════════════════════════════════════
-function HorizontalStepper({ currentStep, onStepClick }: {
-  currentStep: number; onStepClick: (step: number) => void
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const container = scrollRef.current
-    if (!container) return
-    const activeEl = container.querySelector(`[data-step="${currentStep}"]`) as HTMLElement
-    if (activeEl) {
-      const containerRect = container.getBoundingClientRect()
-      const elRect = activeEl.getBoundingClientRect()
-      const offset = elRect.left - containerRect.left - (containerRect.width / 2) + (elRect.width / 2)
-      container.scrollBy({ left: offset, behavior: 'smooth' })
-    }
-  }, [currentStep])
-
-  return (
-    <div ref={scrollRef}
-      className="overflow-x-auto"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-      <style>{`div::-webkit-scrollbar { display: none; }`}</style>
-      <div className="flex items-center gap-1 px-6 py-3 min-w-max">
-        {STEPS.map((s, idx) => {
-          const done = s.id < currentStep
-          const active = s.id === currentStep
-          const SIcon = s.icon
-          const isLast = idx === STEPS.length - 1
-
-          return (
-            <div key={s.id} className="flex items-center" data-step={s.id}>
-              <button onClick={() => onStepClick(s.id)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all shrink-0"
-                style={{
-                  background: active ? G.accent + '12' : 'transparent',
-                  border: `1.5px solid ${active ? G.accent + '55' : 'transparent'}`,
-                }}
-                onMouseEnter={e => {
-                  if (!active) (e.currentTarget as HTMLElement).style.background = G.canvas
-                }}
-                onMouseLeave={e => {
-                  if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'
-                }}>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all"
-                  style={{
-                    background: done ? G.success : active ? G.accent : G.white,
-                    border: done || active ? 'none' : `1.5px solid ${G.border}`,
-                    boxShadow: active ? `0 2px 8px ${G.accent}55` : done ? `0 2px 4px ${G.success}33` : 'none',
-                  }}>
-                  {done
-                    ? <Check className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
-                    : active
-                      ? <SIcon className="h-3.5 w-3.5 text-white" />
-                      : <span className="text-[11px] font-bold" style={{ color: G.muted }}>{s.id}</span>
-                  }
-                </div>
-                <div className="flex flex-col items-start text-left whitespace-nowrap">
-                  <span className="text-[9px] font-bold uppercase tracking-wider"
-                    style={{ color: active ? G.accent : G.muted, letterSpacing: '0.08em' }}>
-                    {s.group}
-                  </span>
-                  <span className="text-xs font-semibold leading-tight"
-                    style={{ color: active ? G.accent : done ? G.secondary : G.muted }}>
-                    {s.label}
-                  </span>
-                </div>
-              </button>
-
-              {!isLast && (
-                <div className="h-px w-6 mx-1 shrink-0"
-                  style={{ background: done ? G.success : G.border }} />
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STEPS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function Step1({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="Organization Details" sub="Basic legal and business information about the organization" />
-      <Grid cols={2}>
-        <F label="Legal Name" required><TI value={f.legal_name} onChange={v => set('legal_name', v)} placeholder="As per MCA/ROC records" /></F>
-        <F label="Trade Name"><TI value={f.trade_name} onChange={v => set('trade_name', v)} placeholder="Brand or trade name if different" /></F>
-        <F label="PAN Number" required><TI value={f.pan} onChange={v => set('pan', v.toUpperCase())} placeholder="AABCS1234D" /></F>
-        <F label="Organization Type" required>
-          <Sel value={f.org_type} onChange={v => set('org_type', v)} placeholder="Select type" options={[
-            'Private Limited Company', 'Public Limited Company', 'Partnership Firm',
-            'LLP-LLPIN', 'Proprietorship', 'Trust', 'Society', 'NGO', 'Other',
-          ]} />
-        </F>
-        <F label="CIN Number" hint="For registered companies"><TI value={f.cin} onChange={v => set('cin', v.toUpperCase())} placeholder="U17000KA2015PTC081234" /></F>
-        <F label="Date of Incorporation"><TI type="date" value={f.incorporation_date} onChange={v => set('incorporation_date', v)} /></F>
-        <F label="Email" required><TI type="email" value={f.email} onChange={v => set('email', v)} placeholder="contact@company.com" /></F>
-        <F label="Mobile" required><TI value={f.mobile} onChange={v => set('mobile', v)} placeholder="+91 XXXXXXXXXX" /></F>
-        <F label="Website"><TI value={f.website} onChange={v => set('website', v)} placeholder="https://www.company.com" /></F>
-        <F label="Nature of Business"><TI value={f.nature_of_business} onChange={v => set('nature_of_business', v)} placeholder="e.g. Manufacturing, Trading, Services" /></F>
-        <F label="Industry Type">
-          <Sel value={f.industry_type} onChange={v => set('industry_type', v)} placeholder="Select industry" options={[
-            'Manufacturing', 'Trading', 'Services', 'IT/Software', 'Real Estate',
-            'Healthcare', 'Education', 'Finance/Banking', 'Retail', 'Hospitality', 'Other',
-          ]} />
-        </F>
-        <F label="Financial Year" hint="Start Month → End Month (default: Apr → Mar)">
-          <div className="grid grid-cols-2 gap-2">
-            <Sel value={f.fy_start} onChange={v => set('fy_start', v)} options={['04', '01', '07', '10']} />
-            <Sel value={f.fy_end} onChange={v => set('fy_end', v)} options={['03', '12', '06', '09']} />
-          </div>
-        </F>
-      </Grid>
-      <div className="mt-6 space-y-3">
-        <Toggle value={f.msme_registered} onChange={v => set('msme_registered', v)} label="MSME Registered" />
-        {f.msme_registered && (
-          <F label="MSME Number"><TI value={f.msme_number} onChange={v => set('msme_number', v)} placeholder="Udyam Registration Number" /></F>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function Step2({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="Registered Address" sub="Primary registered office address for compliance purposes" />
-      <div className="mb-5">
-        <F label="Address Type" required>
-          <Sel value={f.addr_type} onChange={v => set('addr_type', v)} options={['Registered Office', 'Corporate Office', 'Branch Office']} />
-        </F>
-      </div>
-      <Grid cols={2}>
-        <F label="Address Line 1" required><TI value={f.addr_line1} onChange={v => set('addr_line1', v)} placeholder="House/Flat No., Building Name" /></F>
-        <F label="Address Line 2"><TI value={f.addr_line2} onChange={v => set('addr_line2', v)} placeholder="Street, Area" /></F>
-        <F label="Landmark"><TI value={f.landmark} onChange={v => set('landmark', v)} placeholder="Near landmark" /></F>
-        <F label="Pincode" required><TI value={f.pincode} onChange={v => set('pincode', v)} placeholder="560001" /></F>
-        <F label="City" required><TI value={f.city} onChange={v => set('city', v)} placeholder="City" /></F>
-        <F label="District"><TI value={f.district} onChange={v => set('district', v)} placeholder="District" /></F>
-        <F label="State" required>
-          <Sel value={f.state} onChange={v => set('state', v)} placeholder="Select state" options={INDIAN_STATES} />
-        </F>
-        <F label="Country" required>
-          <Sel value={f.country} onChange={v => set('country', v)} options={['India', 'Other']} />
-        </F>
-      </Grid>
-      <div className="mt-5">
-        <F label="Google Maps Location Link" hint="Paste the Google Maps share link for the office location">
-          <TI value={f.google_location} onChange={v => set('google_location', v)} placeholder="https://maps.google.com/..." />
-        </F>
-      </div>
-    </div>
-  )
-}
-
-function Step3({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const kmps = f.kmps
-  const update = (idx: number, key: keyof KMP, val: any) => {
-    const next = kmps.map((k, i) => i === idx ? { ...k, [key]: val } : k)
-    set('kmps', next)
-  }
-  const remove = (idx: number) => set('kmps', kmps.filter((_, i) => i !== idx))
-  return (
-    <div>
-      <SectionHead title="Key Management Persons" sub="Directors, partners, authorized signatories and other KMPs" />
-      <div className="space-y-5">
-        {kmps.map((kmp, idx) => (
-          <div key={kmp.id} className="rounded-xl p-5" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-bold" style={{ color: G.primary }}>Person {idx + 1}</span>
-              {kmps.length > 1 && (
-                <button type="button" onClick={() => remove(idx)}
-                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
-                  style={{ color: '#EF4444', background: '#FEF2F2', border: '1px solid #EF444433' }}>
-                  <Trash2 className="h-3 w-3" />Remove
-                </button>
-              )}
-            </div>
-            <Grid cols={2}>
-              <F label="Full Name" required><TI value={kmp.full_name} onChange={v => update(idx, 'full_name', v)} placeholder="Full legal name" /></F>
-              <F label="Designation" required>
-                <Sel value={kmp.designation} onChange={v => update(idx, 'designation', v)} placeholder="Select designation" options={[
-                  'Director', 'Managing Director', 'Partner', 'Proprietor',
-                  'CEO', 'CFO', 'Authorized Signatory', 'Compliance Officer', 'Other',
-                ]} />
-              </F>
-              <F label="Email" required><TI type="email" value={kmp.email} onChange={v => update(idx, 'email', v)} placeholder="email@company.com" /></F>
-              <F label="Mobile" required><TI value={kmp.mobile} onChange={v => update(idx, 'mobile', v)} placeholder="+91 XXXXXXXXXX" /></F>
-              <F label="DIN Number" hint="For Directors"><TI value={kmp.din} onChange={v => update(idx, 'din', v)} placeholder="8-digit DIN" /></F>
-              <F label="Date of Birth"><TI type="date" value={kmp.dob} onChange={v => update(idx, 'dob', v)} /></F>
-            </Grid>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Toggle value={kmp.is_primary} onChange={v => update(idx, 'is_primary', v)} label="Primary Contact" />
-              <Toggle value={kmp.is_signatory} onChange={v => update(idx, 'is_signatory', v)} label="Authorized Signatory" />
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => set('kmps', [...kmps, INITIAL_KMP()])}
-          className="flex items-center gap-2 w-full justify-center py-3 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: G.white, border: `2px dashed ${G.border}`, color: G.secondary }}>
-          <Plus className="h-4 w-4" />Add Another KMP
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function Step4({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const branches = f.branches
-  const update = (idx: number, key: keyof Branch, val: any) => {
-    set('branches', branches.map((b, i) => i === idx ? { ...b, [key]: val } : b))
-  }
-  const remove = (idx: number) => set('branches', branches.filter((_, i) => i !== idx))
-  return (
-    <div>
-      <SectionHead title="Branch Details" sub="Add all branch offices. Skip if single-location organization." />
-      <div className="space-y-5">
-        {branches.length === 0 && (
-          <div className="py-12 text-center rounded-xl" style={{ background: G.canvas, border: `1.5px dashed ${G.border}` }}>
-            <GitBranch className="h-10 w-10 mx-auto mb-3" style={{ color: G.muted }} />
-            <p className="text-sm" style={{ color: G.secondary }}>No branches added yet</p>
-            <p className="text-xs mt-1" style={{ color: G.muted }}>Click below to add a branch</p>
-          </div>
-        )}
-        {branches.map((br, idx) => (
-          <div key={br.id} className="rounded-xl p-5" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-bold" style={{ color: G.primary }}>Branch {idx + 1}</span>
-              <button type="button" onClick={() => remove(idx)}
-                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
-                style={{ color: '#EF4444', background: '#FEF2F2', border: '1px solid #EF444433' }}>
-                <Trash2 className="h-3 w-3" />Remove
-              </button>
-            </div>
-            <Grid cols={2}>
-              <F label="Branch Name" required><TI value={br.name} onChange={v => update(idx, 'name', v)} placeholder="e.g. Mumbai Branch" /></F>
-              <F label="Branch Code" required><TI value={br.code} onChange={v => update(idx, 'code', v)} placeholder="e.g. MUM-001" /></F>
-              <F label="State" required>
-                <Sel value={br.state} onChange={v => update(idx, 'state', v)} placeholder="Select state" options={INDIAN_STATES} />
-              </F>
-              <F label="Status">
-                <Sel value={br.status} onChange={v => update(idx, 'status', v)} options={['active', 'inactive']} />
-              </F>
-              <F label="Contact Person"><TI value={br.contact_person} onChange={v => update(idx, 'contact_person', v)} /></F>
-              <F label="Contact Number"><TI value={br.contact_number} onChange={v => update(idx, 'contact_number', v)} /></F>
-              <F label="Email"><TI type="email" value={br.email} onChange={v => update(idx, 'email', v)} /></F>
-              <F label="Audit Type Applicable">
-                <Sel value={br.audit_applicable} onChange={v => update(idx, 'audit_applicable', v)} placeholder="Select" options={['None', 'Internal Audit', 'Statutory Audit', 'Tax Audit', 'All']} />
-              </F>
-            </Grid>
-            <div className="mt-4">
-              <F label="Address" required>
-                <textarea value={br.address} onChange={e => update(idx, 'address', e.target.value)} rows={2}
-                  placeholder="Full branch address"
-                  className="w-full rounded-lg px-3.5 py-2.5 text-sm outline-none resize-none transition-all"
-                  style={{ background: G.white, border: `1.5px solid ${G.border}`, color: G.primary }} />
-              </F>
-            </div>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Toggle value={br.gst_applicable} onChange={v => update(idx, 'gst_applicable', v)} label="GST Applicable" />
-              <Toggle value={br.tds_applicable} onChange={v => update(idx, 'tds_applicable', v)} label="TDS Applicable" />
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => set('branches', [...branches, INITIAL_BRANCH()])}
-          className="flex items-center gap-2 w-full justify-center py-3 rounded-xl text-sm font-semibold"
-          style={{ background: G.white, border: `2px dashed ${G.border}`, color: G.secondary }}>
-          <Plus className="h-4 w-4" />Add Branch
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function Step5({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const regs = f.gst_registrations
-  const update = (idx: number, key: keyof GSTReg, val: any) => {
-    set('gst_registrations', regs.map((r, i) => i === idx ? { ...r, [key]: val } : r))
-  }
-  const remove = (idx: number) => set('gst_registrations', regs.filter((_, i) => i !== idx))
-  return (
-    <div>
-      <SectionHead title="GST Registration" sub="Add all GSTIN registrations across states and branches" />
-      <div className="space-y-5">
-        {regs.map((reg, idx) => (
-          <div key={reg.id} className="rounded-xl p-5" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-bold" style={{ color: G.primary }}>GST Registration {idx + 1}</span>
-              {regs.length > 1 && (
-                <button type="button" onClick={() => remove(idx)}
-                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
-                  style={{ color: '#EF4444', background: '#FEF2F2', border: '1px solid #EF444433' }}>
-                  <Trash2 className="h-3 w-3" />Remove
-                </button>
-              )}
-            </div>
-            <Grid cols={2}>
-              <F label="GSTIN" required><TI value={reg.gstin} onChange={v => update(idx, 'gstin', v.toUpperCase())} placeholder="29AABCS1234D1Z5" /></F>
-              <F label="Registration Type" required>
-                <Sel value={reg.registration_type} onChange={v => update(idx, 'registration_type', v)} placeholder="Select type" options={[
-                  'Regular', 'Composition', 'SEZ', 'ISD', 'Casual Taxable Person', 'Non Resident Taxable Person',
-                ]} />
-              </F>
-              <F label="State" required>
-                <Sel value={reg.state} onChange={v => update(idx, 'state', v)} placeholder="Select state" options={INDIAN_STATES} />
-              </F>
-              <F label="Branch">
-                <Sel value={reg.branch} onChange={v => update(idx, 'branch', v)} placeholder="Select branch (if applicable)"
-                  options={['Head Office', ...f.branches.map(b => b.name).filter(Boolean)]} />
-              </F>
-              <F label="Registration Date" required><TI type="date" value={reg.registration_date} onChange={v => update(idx, 'registration_date', v)} /></F>
-              <F label="GST Status">
-                <Sel value={reg.gst_status} onChange={v => update(idx, 'gst_status', v)} options={['Active', 'Suspended', 'Cancelled']} />
-              </F>
-              <F label="Authorized Signatory" required>
-                <Sel value={reg.authorized_signatory} onChange={v => update(idx, 'authorized_signatory', v)} placeholder="Select from KMPs"
-                  options={f.kmps.filter(k => k.is_signatory && k.full_name).map(k => k.full_name)} />
-              </F>
-            </Grid>
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Toggle value={reg.eway_bill} onChange={v => update(idx, 'eway_bill', v)} label="E-Way Bill Applicable" />
-              <Toggle value={reg.reconciliation} onChange={v => update(idx, 'reconciliation', v)} label="GST Reconciliation Required" />
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => set('gst_registrations', [...regs, INITIAL_GST_REG()])}
-          className="flex items-center gap-2 w-full justify-center py-3 rounded-xl text-sm font-semibold"
-          style={{ background: G.white, border: `2px dashed ${G.border}`, color: G.secondary }}>
-          <Plus className="h-4 w-4" />Add GST Registration
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function Step6({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="GST Filing Configuration" sub="Configure GST return filing preferences and portal credentials" />
-      <Grid cols={2}>
-        <F label="State Code" required><TI value={f.state_code} onChange={v => set('state_code', v)} placeholder="e.g. 29" /></F>
-        <F label="GST Filing Frequency" required>
-          <Sel value={f.gst_frequency} onChange={v => set('gst_frequency', v)} options={['Monthly', 'Quarterly']} />
-        </F>
-      </Grid>
-      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Toggle value={f.sez_payer} onChange={v => set('sez_payer', v)} label="SEZ Payer" />
-        <Toggle value={f.einvoicing} onChange={v => set('einvoicing', v)} label="E-Invoicing Applicable" />
-      </div>
-      <div className="mt-5">
-        <F label="GST Return Types" required hint="Select all applicable return types">
-          <MultiSelect
-            options={['GSTR1', 'GSTR1A', 'GSTR2B', 'GSTR3B', 'GSTR9', 'GSTR9C']}
-            value={f.gst_return_types} onChange={v => set('gst_return_types', v)} />
-        </F>
-      </div>
-      <div className="mt-6 rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>GST Portal Credentials</p>
-        <Grid cols={2}>
-          <F label="GST Portal Username" required><TI value={f.gst_username} onChange={v => set('gst_username', v)} /></F>
-          <F label="GST Portal Password" required><PwdInput value={f.gst_password} onChange={v => set('gst_password', v)} /></F>
-          <F label="GST Registered Mobile"><TI value={f.gst_mobile} onChange={v => set('gst_mobile', v)} /></F>
-          <F label="GST Registered Email"><TI type="email" value={f.gst_email} onChange={v => set('gst_email', v)} /></F>
-        </Grid>
-      </div>
-      <div className="mt-5 rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>Default Assignments</p>
-        <Grid cols={2}>
-          <F label="Default GST Reviewer"><TI value={f.gst_reviewer} onChange={v => set('gst_reviewer', v)} placeholder="Team member name" /></F>
-          <F label="Default GST Approver"><TI value={f.gst_approver} onChange={v => set('gst_approver', v)} placeholder="Team member name" /></F>
-        </Grid>
-      </div>
-    </div>
-  )
-}
-
-function Step7({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="TDS Configuration" sub="Configure TDS deductor details and portal credentials" />
-      <Toggle value={f.tds_applicable} onChange={v => set('tds_applicable', v)} label="TDS Applicable for this Organization" />
-      {f.tds_applicable && (
-        <div className="mt-6 space-y-6">
-          <Grid cols={2}>
-            <F label="TAN Number" required><TI value={f.tan} onChange={v => set('tan', v.toUpperCase())} placeholder="MUMC12345D" /></F>
-            <F label="Deductor Type" required>
-              <Sel value={f.deductor_type} onChange={v => set('deductor_type', v)} placeholder="Select type" options={[
-                'Company', 'Partnership', 'LLP', 'Trust', 'Proprietorship', 'Government', 'Others',
-              ]} />
-            </F>
-            <F label="Name (as per TAN)" required><TI value={f.tds_name} onChange={v => set('tds_name', v)} /></F>
-            <F label="Branch">
-              <Sel value={f.tds_branch} onChange={v => set('tds_branch', v)} placeholder="Select branch"
-                options={['Head Office', ...f.branches.map(b => b.name).filter(Boolean)]} />
-            </F>
-            <F label="State"><Sel value={f.tds_state} onChange={v => set('tds_state', v)} placeholder="Select state" options={INDIAN_STATES} /></F>
-            <F label="Effective Date" required><TI type="date" value={f.effective_date} onChange={v => set('effective_date', v)} /></F>
-          </Grid>
-
-          <div className="rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>Deductor Address</p>
-            <Grid cols={2}>
-              <F label="Flat No."><TI value={f.flat_no} onChange={v => set('flat_no', v)} /></F>
-              <F label="Premises / Building Name"><TI value={f.premises_name} onChange={v => set('premises_name', v)} /></F>
-              <F label="Road / Street / Lane"><TI value={f.road_street} onChange={v => set('road_street', v)} /></F>
-              <F label="Area / Location"><TI value={f.area_location} onChange={v => set('area_location', v)} /></F>
-              <F label="City"><TI value={f.tds_city} onChange={v => set('tds_city', v)} /></F>
-              <F label="District"><TI value={f.tds_district} onChange={v => set('tds_district', v)} /></F>
-              <F label="State"><Sel value={f.tds_state2} onChange={v => set('tds_state2', v)} placeholder="Select state" options={INDIAN_STATES} /></F>
-              <F label="Pincode"><TI value={f.tds_pincode} onChange={v => set('tds_pincode', v)} /></F>
-              <F label="Telephone Number"><TI value={f.telephone} onChange={v => set('telephone', v)} /></F>
-              <F label="Email"><TI type="email" value={f.tds_email} onChange={v => set('tds_email', v)} /></F>
-            </Grid>
-          </div>
-
-          <div className="rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>Government / PAO / DDO Details (if applicable)</p>
-            <Grid cols={2}>
-              <F label="Ministry / Dept Name"><TI value={f.ministry_dept} onChange={v => set('ministry_dept', v)} /></F>
-              <F label="PAO Code"><TI value={f.pao_code} onChange={v => set('pao_code', v)} /></F>
-              <F label="PAO Registration Number"><TI value={f.pao_reg_no} onChange={v => set('pao_reg_no', v)} /></F>
-              <F label="DDO Code"><TI value={f.ddo_code} onChange={v => set('ddo_code', v)} /></F>
-              <F label="DDO Registration Number"><TI value={f.ddo_reg_no} onChange={v => set('ddo_reg_no', v)} /></F>
-            </Grid>
-          </div>
-
-          <div className="rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>TDS Portal Credentials</p>
-            <Grid cols={2}>
-              <F label="TDS Portal Username" required><TI value={f.tds_portal_username} onChange={v => set('tds_portal_username', v)} /></F>
-              <F label="TDS Portal Password" required><PwdInput value={f.tds_portal_password} onChange={v => set('tds_portal_password', v)} /></F>
-            </Grid>
-          </div>
-          <Toggle value={f.tds_reconciliation} onChange={v => set('tds_reconciliation', v)} label="TDS Reconciliation Required" />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Step8({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const TDS_RETURNS = [
-    { code: '24Q', new: '138-TDS', desc: 'Salary' },
-    { code: '26Q', new: '140-TDS', desc: 'Non-salary domestic' },
-    { code: '27Q', new: '144-TDS', desc: 'Non-resident payments' },
-    { code: '27EQ', new: '143-TDS', desc: 'TCS' },
-  ]
-  const TDS_SECTIONS = ['192', '193', '194', '194A', '194B', '194C', '194D', '194E', '194G', '194H', '194I', '194IA', '194IB', '194J', '194K', '194N', '194Q', '195', '206C', '206CR']
-  return (
-    <div>
-      <SectionHead title="TDS Filing Configuration" sub="Configure TDS return types, applicable sections and TRACES credentials" />
-      <F label="Applicable TDS Return Types" required>
-        <div className="space-y-2 mt-1">
-          {TDS_RETURNS.map(r => (
-            <div key={r.code}
-              onClick={() => {
-                const cur = f.tds_return_types
-                set('tds_return_types', cur.includes(r.code) ? cur.filter(x => x !== r.code) : [...cur, r.code])
-              }}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all"
-              style={{
-                background: f.tds_return_types.includes(r.code) ? G.accent + '12' : G.canvas,
-                border: `1px solid ${f.tds_return_types.includes(r.code) ? G.accent : G.border}`,
-              }}>
-              <div className="flex h-4 w-4 items-center justify-center rounded"
-                style={{ border: `2px solid ${f.tds_return_types.includes(r.code) ? G.accent : G.border}`, background: f.tds_return_types.includes(r.code) ? G.accent : 'transparent' }}>
-                {f.tds_return_types.includes(r.code) && <Check className="h-2.5 w-2.5 text-white" />}
-              </div>
-              <span className="text-sm font-semibold" style={{ color: G.primary }}>Form {r.code}</span>
-              <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: G.accent + '18', color: G.accent }}>{r.new}</span>
-              <span className="text-xs" style={{ color: G.muted }}>— {r.desc}</span>
-            </div>
-          ))}
-        </div>
-      </F>
-      <div className="mt-5">
-        <F label="Applicable TDS Sections" hint="Select all sections under which deductions are made">
-          <MultiSelect options={TDS_SECTIONS} value={f.tds_sections} onChange={v => set('tds_sections', v)} />
-        </F>
-      </div>
-      <div className="mt-6 rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>TRACES Credentials</p>
-        <Grid cols={2}>
-          <F label="TRACES Username" required><TI value={f.traces_username} onChange={v => set('traces_username', v)} /></F>
-          <F label="TRACES Password" required><PwdInput value={f.traces_password} onChange={v => set('traces_password', v)} /></F>
-          <F label="Registered Mobile"><TI value={f.traces_mobile} onChange={v => set('traces_mobile', v)} /></F>
-          <F label="Registered Email"><TI type="email" value={f.traces_email} onChange={v => set('traces_email', v)} /></F>
-        </Grid>
-      </div>
-      <div className="mt-5 rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>Default Assignments</p>
-        <Grid cols={2}>
-          <F label="Default Reviewer"><TI value={f.tds_reviewer} onChange={v => set('tds_reviewer', v)} placeholder="First level reviewer" /></F>
-          <F label="Default Approver"><TI value={f.tds_approver} onChange={v => set('tds_approver', v)} placeholder="Final approver" /></F>
-        </Grid>
-      </div>
-    </div>
-  )
-}
-
-function Step9({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="Income Tax Configuration" sub="Income tax portal credentials and tax audit applicability" />
-      <div className="rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>Income Tax Portal Credentials</p>
-        <Grid cols={2}>
-          <F label="PAN Number" required><TI value={f.it_pan} onChange={v => set('it_pan', v.toUpperCase())} placeholder="AABCS1234D" /></F>
-          <F label="IT Portal Username" required><TI value={f.it_username} onChange={v => set('it_username', v)} /></F>
-          <F label="IT Portal Password" required><PwdInput value={f.it_password} onChange={v => set('it_password', v)} /></F>
-          <F label="Registered Mobile"><TI value={f.it_mobile} onChange={v => set('it_mobile', v)} /></F>
-          <F label="Registered Email"><TI type="email" value={f.it_email} onChange={v => set('it_email', v)} /></F>
-        </Grid>
-      </div>
-      <div className="mt-5">
-        <Toggle value={f.tax_audit_applicable} onChange={v => set('tax_audit_applicable', v)} label="Tax Audit Applicable (u/s 44AB)" />
-      </div>
-      <div className="mt-5 rounded-xl p-5 space-y-4" style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-        <p className="text-xs font-bold uppercase tracking-wide" style={{ color: G.secondary }}>Default Assignments</p>
-        <Grid cols={2}>
-          <F label="Default Reviewer" hint="First level review"><TI value={f.it_reviewer} onChange={v => set('it_reviewer', v)} placeholder="Team member name" /></F>
-          <F label="Default Approver" hint="Final sign-off"><TI value={f.it_approver} onChange={v => set('it_approver', v)} placeholder="Team member name" /></F>
-        </Grid>
-      </div>
-    </div>
-  )
-}
-
-function Step10({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="Client Admin Creation" sub="Create the primary admin user for the client organization. They will receive OTP for verification." />
-      <div className="rounded-xl p-4 mb-6" style={{ background: '#EFF8FF', border: `1px solid ${G.accent}33` }}>
-        <div className="flex items-center gap-2 mb-1">
-          <AlertCircle className="h-4 w-4" style={{ color: G.accent }} />
-          <p className="text-sm font-semibold" style={{ color: G.accent }}>Role: CLIENT_ADMIN</p>
-        </div>
-        <p className="text-xs" style={{ color: G.secondary }}>
-          This user will have full access to the client's compliance portal. Email OTP and Mobile OTP verification will be triggered on creation.
-        </p>
-      </div>
-      <Grid cols={2}>
-        <F label="Full Name" required><TI value={f.admin_name} onChange={v => set('admin_name', v)} placeholder="Full name" /></F>
-        <F label="Designation" required>
-          <Sel value={f.admin_designation} onChange={v => set('admin_designation', v)} placeholder="Select" options={[
-            'Director', 'CFO', 'Finance Manager', 'Accounts Manager', 'Compliance Officer', 'CEO', 'Other',
-          ]} />
-        </F>
-        <F label="Email" required><TI type="email" value={f.admin_email} onChange={v => set('admin_email', v)} placeholder="admin@company.com" /></F>
-        <F label="Mobile" required><TI value={f.admin_mobile} onChange={v => set('admin_mobile', v)} placeholder="+91 XXXXXXXXXX" /></F>
-        <div className="md:col-span-2">
-          <F label="Temporary Password" required hint="User will be prompted to change on first login">
-            <PwdInput value={f.admin_password} onChange={v => set('admin_password', v)} placeholder="Min 8 characters" />
-          </F>
-        </div>
-      </Grid>
-    </div>
-  )
-}
-
-function Step11({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const ALL_CLAUSES = [
-    '3(i)(a)', '3(i)(b)', '3(i)(c)', '3(ii)(a)', '3(ii)(b)', '3(iii)',
-    '3(iv)', '3(v)', '3(vi)', '3(vii)(a)', '3(vii)(b)', '3(viii)',
-    '3(ix)', '3(x)', '3(xi)', '3(xii)', '3(xiii)', '3(xiv)',
-    '3(xv)', '3(xvi)', '3(xvii)', '3(xviii)', '3(xix)', '3(xx)', '3(xxi)',
-  ]
-  const [newClause, setNewClause] = useState('')
-  return (
-    <div>
-      <SectionHead title="Audit Clause Configuration" sub="Enable or disable CARO 2020 clauses applicable to this organization" />
-      <Grid cols={2}>
-        <F label="Configuration Financial Year">
-          <Sel value={f.clause_fy} onChange={v => set('clause_fy', v)} options={['2025-26', '2024-25', '2026-27']} />
-        </F>
-        <F label="Configuration Version"><TI value={f.clause_version} onChange={v => set('clause_version', v)} placeholder="1.0" /></F>
-      </Grid>
-      <div className="mt-6">
-        <F label="Enabled Clauses" hint="Click to toggle. Green = enabled, Gray = disabled">
-          <div className="flex flex-wrap gap-2 mt-1">
-            {ALL_CLAUSES.map(c => {
-              const enabled = f.enabled_clauses.includes(c)
-              return (
-                <button key={c} type="button"
-                  onClick={() => {
-                    if (enabled) {
-                      set('enabled_clauses', f.enabled_clauses.filter(x => x !== c))
-                      set('disabled_clauses', [...f.disabled_clauses, c])
-                    } else {
-                      set('disabled_clauses', f.disabled_clauses.filter(x => x !== c))
-                      set('enabled_clauses', [...f.enabled_clauses, c])
-                    }
-                  }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{
-                    background: enabled ? '#F0FDF4' : G.canvas,
-                    color: enabled ? '#10B981' : G.muted,
-                    border: `1px solid ${enabled ? '#10B98133' : G.border}`,
-                  }}>
-                  {enabled && <Check className="h-2.5 w-2.5 inline mr-1" />}{c}
-                </button>
-              )
-            })}
-          </div>
-        </F>
-      </div>
-      <div className="mt-6">
-        <F label="Custom Clauses" hint="Add organization-specific audit clauses">
-          <div className="flex gap-2">
-            <input value={newClause} onChange={e => setNewClause(e.target.value)}
-              placeholder="Enter custom clause description"
-              className="flex-1 rounded-lg px-3.5 py-2.5 text-sm outline-none"
-              style={{ background: G.white, border: `1.5px solid ${G.border}`, color: G.primary }} />
-            <button type="button"
-              onClick={() => { if (newClause.trim()) { set('custom_clauses', [...f.custom_clauses, newClause.trim()]); setNewClause('') } }}
-              className="px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
-              style={{ background: G.accent }}>Add</button>
-          </div>
-          {f.custom_clauses.length > 0 && (
-            <div className="mt-3 space-y-2">
-              {f.custom_clauses.map((c, i) => (
-                <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-lg"
-                  style={{ background: G.white, border: `1px solid ${G.divider}` }}>
-                  <span className="flex-1 text-sm" style={{ color: G.primary }}>{c}</span>
-                  <button type="button" onClick={() => set('custom_clauses', f.custom_clauses.filter((_, j) => j !== i))}>
-                    <Trash2 className="h-3.5 w-3.5" style={{ color: '#EF4444' }} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </F>
-      </div>
-    </div>
-  )
-}
-
-function Step12({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="Audit Applicability Configuration" sub="Configure which types of audits apply and their scheduling" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Toggle value={f.statutory_audit_applicable} onChange={v => set('statutory_audit_applicable', v)} label="Statutory Audit Applicable" />
-        <Toggle value={f.tax_audit_applicable} onChange={v => set('tax_audit_applicable', v)} label="Tax Audit Applicable (u/s 44AB)" />
-      </div>
-      <div className="mt-6">
-        <Grid cols={2}>
-          <F label="Audit Frequency">
-            <Sel value={f.audit_frequency} onChange={v => set('audit_frequency', v)} options={['Financial Year', 'Assessment Year']} />
-          </F>
-          <F label="Audit Due Date"><TI type="date" value={f.audit_due_date} onChange={v => set('audit_due_date', v)} /></F>
-          <F label="Default Reviewer" hint="First level review">
-            <TI value={f.audit_reviewer} onChange={v => set('audit_reviewer', v)} placeholder="CA / Manager" />
-          </F>
-          <F label="Default Approver" hint="Final approval / sign-off">
-            <TI value={f.audit_approver} onChange={v => set('audit_approver', v)} placeholder="Partner / CA" />
-          </F>
-        </Grid>
-      </div>
-    </div>
-  )
-}
-
-function Step13({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const MASTERS = [
-    'GST Return Types', 'GST Registration Types', 'TDS Return Types', 'TDS Sections',
-    'Audit Types', 'Notice Types', 'Task Categories', 'Document Categories', 'HSN Codes', 'SAC Codes',
-  ]
-  return (
-    <div>
-      <SectionHead title="Compliance Configuration" sub="Select compliance masters to activate for this organization" />
-      <div className="rounded-xl p-4 mb-6" style={{ background: '#FFFBEB', border: '1px solid #FCD34D66' }}>
-        <p className="text-xs font-semibold mb-1" style={{ color: '#92400E' }}>About Compliance Masters</p>
-        <p className="text-xs" style={{ color: '#78350F' }}>
-          These are master data repositories used across GST, TDS, Audit and Notice modules. Enable the ones applicable to this client. All are enabled by default.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {MASTERS.map(m => {
-          const active = f.compliance_masters.includes(m)
-          return (
-            <div key={m}
-              onClick={() => set('compliance_masters', active ? f.compliance_masters.filter(x => x !== m) : [...f.compliance_masters, m])}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all"
-              style={{
-                background: active ? G.accent + '10' : G.canvas,
-                border: `1px solid ${active ? G.accent + '55' : G.border}`,
-              }}>
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
-                style={{ background: active ? G.accent : 'transparent', border: `2px solid ${active ? G.accent : G.border}` }}>
-                {active && <Check className="h-3 w-3 text-white" />}
-              </div>
-              <span className="text-sm" style={{ color: active ? G.primary : G.secondary }}>{m}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function Step14({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  return (
-    <div>
-      <SectionHead title="Communication Preferences" sub="Configure how the system communicates with the client organization" />
-      <div className="space-y-3">
-        <Toggle value={f.email_notifications} onChange={v => set('email_notifications', v)} label="Email Notifications" />
-        <Toggle value={f.whatsapp_notifications} onChange={v => set('whatsapp_notifications', v)} label="WhatsApp Notifications" />
-        <Toggle value={f.portal_notifications} onChange={v => set('portal_notifications', v)} label="Portal Notifications (in-app)" />
-      </div>
-      {!f.email_notifications && !f.whatsapp_notifications && !f.portal_notifications && (
-        <div className="mt-4 rounded-xl p-3" style={{ background: '#FEF2F2', border: '1px solid #EF444433' }}>
-          <p className="text-xs" style={{ color: '#991B1B' }}>⚠ At least one notification channel must be enabled for compliance alerts and document reminders to work.</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Step15({ f, set }: { f: FormState; set: (k: keyof FormState, v: any) => void }) {
-  const DOC_CATS = ['GST', 'TDS', 'Audit', 'Financial Statements', 'Bank Statements', 'Legal Documents', 'Notices', 'Compliance Documents']
-  return (
-    <div>
-      <SectionHead title="Document Collection Preferences" sub="Configure automated document collection and reminder settings" />
-      <div className="space-y-3">
-        <Toggle value={f.auto_doc_requests} onChange={v => set('auto_doc_requests', v)} label="Enable Auto Document Requests" />
-        <Toggle value={f.reminder_notifications} onChange={v => set('reminder_notifications', v)} label="Enable Reminder Notifications" />
-      </div>
-      {f.auto_doc_requests && (
-        <div className="mt-6">
-          <Grid cols={2}>
-            <F label="Reminder Frequency">
-              <Sel value={f.reminder_frequency} onChange={v => set('reminder_frequency', v)} options={['Daily', 'Weekly', 'Bi-Weekly', 'Monthly']} />
-            </F>
-            <F label="Escalation After (Days)">
-              <Sel value={f.escalation_days} onChange={v => set('escalation_days', v)} options={['3', '5', '7', '10', '14', '30']} />
-            </F>
-          </Grid>
-        </div>
-      )}
-      <div className="mt-6">
-        <F label="Required Document Categories" hint="Select the document categories to collect from this client">
-          <MultiSelect options={DOC_CATS} value={f.doc_categories} onChange={v => set('doc_categories', v)} />
-        </F>
-      </div>
-    </div>
-  )
-}
-
-function Step16({ f }: { f: FormState }) {
-  const sections = [
-    {
-      label: 'Organization Details', icon: '🏢', items: [
-        { k: 'Legal Name', v: f.legal_name }, { k: 'PAN', v: f.pan },
-        { k: 'Type', v: f.org_type }, { k: 'Email', v: f.email }, { k: 'Mobile', v: f.mobile },
-      ]
-    },
-    {
-      label: 'Registered Address', icon: '📍', items: [
-        { k: 'Address', v: [f.addr_line1, f.city, f.state, f.pincode].filter(Boolean).join(', ') },
-        { k: 'Type', v: f.addr_type },
-      ]
-    },
-    { label: 'KMPs', icon: '👥', items: f.kmps.map(k => ({ k: k.designation || 'KMP', v: k.full_name || '—' })) },
-    { label: 'Branches', icon: '🏪', items: f.branches.length ? f.branches.map(b => ({ k: b.code, v: `${b.name} — ${b.state}` })) : [{ k: 'Branches', v: 'None added' }] },
-    { label: 'GST Registrations', icon: '🧾', items: f.gst_registrations.map(g => ({ k: g.state || 'GST', v: g.gstin || '—' })) },
-    {
-      label: 'GST Filing', icon: '📋', items: [
-        { k: 'Frequency', v: f.gst_frequency }, { k: 'Return Types', v: f.gst_return_types.join(', ') || '—' },
-        { k: 'SEZ Payer', v: f.sez_payer ? 'Yes' : 'No' }, { k: 'E-Invoicing', v: f.einvoicing ? 'Yes' : 'No' },
-      ]
-    },
-    {
-      label: 'TDS Config', icon: '🧮', items: [
-        { k: 'TAN', v: f.tan || '—' }, { k: 'Deductor Type', v: f.deductor_type || '—' },
-        { k: 'Applicable', v: f.tds_applicable ? 'Yes' : 'No' },
-      ]
-    },
-    {
-      label: 'TDS Filing', icon: '📄', items: [
-        { k: 'Return Types', v: f.tds_return_types.join(', ') || '—' },
-        { k: 'Sections', v: f.tds_sections.slice(0, 4).join(', ') + (f.tds_sections.length > 4 ? '...' : '') },
-      ]
-    },
-    {
-      label: 'Income Tax', icon: '🛡️', items: [
-        { k: 'IT PAN', v: f.it_pan || '—' }, { k: 'Tax Audit', v: f.tax_audit_applicable ? 'Yes' : 'No' },
-      ]
-    },
-    {
-      label: 'Client Admin', icon: '👤', items: [
-        { k: 'Name', v: f.admin_name || '—' }, { k: 'Email', v: f.admin_email || '—' },
-      ]
-    },
-    {
-      label: 'Audit Setup', icon: '📊', items: [
-        { k: 'Statutory', v: f.statutory_audit_applicable ? 'Yes' : 'No' },
-        { k: 'Tax Audit', v: f.tax_audit_applicable ? 'Yes' : 'No' },
-        { k: 'Frequency', v: f.audit_frequency }, { k: 'Clauses', v: `${f.enabled_clauses.length} enabled` },
-      ]
-    },
-    {
-      label: 'Communication', icon: '🔔', items: [
-        { k: 'Email', v: f.email_notifications ? '✓ On' : '✗ Off' },
-        { k: 'WhatsApp', v: f.whatsapp_notifications ? '✓ On' : '✗ Off' },
-        { k: 'Portal', v: f.portal_notifications ? '✓ On' : '✗ Off' },
-      ]
-    },
-    {
-      label: 'Documents', icon: '📁', items: [
-        { k: 'Auto Requests', v: f.auto_doc_requests ? 'Enabled' : 'Disabled' },
-        { k: 'Reminder', v: f.reminder_frequency }, { k: 'Categories', v: `${f.doc_categories.length} selected` },
-      ]
-    },
-  ]
-  return (
-    <div>
-      <SectionHead title="Review & Submit" sub="Verify all information before completing the onboarding process." />
-      <div className="rounded-xl p-4 mb-6 flex items-center gap-3"
-        style={{ background: '#EBF5FF', border: `1.5px solid ${G.accent}44` }}>
-        <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0" style={{ background: G.accent }}>
-          <CheckCircle2 className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-bold" style={{ color: G.accent }}>Ready to submit</p>
-          <p className="text-xs mt-0.5" style={{ color: G.secondary }}>All required sections have been filled. Review the summary below before submitting.</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sections.map(sec => (
-          <div key={sec.label} className="rounded-xl p-4"
-            style={{ background: G.canvas, border: `1px solid ${G.divider}` }}>
-            <div className="flex items-center gap-2 mb-3 pb-2.5" style={{ borderBottom: `1px solid ${G.divider}` }}>
-              <span className="text-base">{sec.icon}</span>
-              <p className="text-xs font-bold" style={{ color: G.primary }}>{sec.label}</p>
-            </div>
-            <div className="space-y-2">
-              {sec.items.map(item => (
-                <div key={item.k} className="flex items-start gap-2">
-                  <span className="text-[10px] shrink-0 w-20 pt-0.5" style={{ color: G.muted }}>{item.k}</span>
-                  <span className="text-xs font-medium flex-1 leading-relaxed" style={{ color: item.v === '—' ? G.muted : G.primary }}>{item.v || '—'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// NAVIGATION BUTTONS COMPONENT (inline at bottom of form)
-// ═══════════════════════════════════════════════════════════════════════════════
-function NavigationButtons({ step, totalSteps, onBack, onNext, onSaveDraft, onSubmit }: {
-  step: number; totalSteps: number; onBack: () => void; onNext: () => void
-  onSaveDraft: () => void; onSubmit: () => void
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 pt-8 mt-8"
-      style={{ borderTop: `1.5px solid ${G.divider}` }}>
-      {/* Back Button */}
-      <button type="button"
-        onClick={onBack}
-        disabled={step === 1}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-        style={{ background: G.canvas, border: `1.5px solid ${G.border}`, color: G.secondary }}
-        onMouseEnter={e => {
-          if (step !== 1) {
-            ; (e.currentTarget as HTMLElement).style.borderColor = G.borderHov
-              ; (e.currentTarget as HTMLElement).style.background = G.white
-          }
+        placeholder={placeholder ?? '••••••••'}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          padding: '8px 36px 8px 12px', borderRadius: 8,
+          border: `1px solid ${G.border}`,
+          fontSize: 14, color: G.primary, background: G.white,
+          outline: 'none', fontFamily: 'Inter, sans-serif',
         }}
-        onMouseLeave={e => {
-          ; (e.currentTarget as HTMLElement).style.borderColor = G.border
-            ; (e.currentTarget as HTMLElement).style.background = G.canvas
-        }}>
-        <ChevronLeft className="h-4 w-4" />Back
+      />
+      <button
+        type="button"
+        onClick={() => setShow(s => !s)}
+        style={{
+          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+          background: 'none', border: 'none', cursor: 'pointer', color: G.muted, padding: 0,
+        }}
+      >
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
       </button>
-
-      {/* Right side buttons */}
-      <div className="flex items-center gap-3">
-        {/* Save Draft */}
-        <button type="button" onClick={onSaveDraft}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
-          style={{ background: G.white, color: G.accent, border: `1.5px solid ${G.accent}55` }}
-          onMouseEnter={e => {
-            ; (e.currentTarget as HTMLElement).style.background = G.accent + '08'
-              ; (e.currentTarget as HTMLElement).style.borderColor = G.accent
-          }}
-          onMouseLeave={e => {
-            ; (e.currentTarget as HTMLElement).style.background = G.white
-              ; (e.currentTarget as HTMLElement).style.borderColor = G.accent + '55'
-          }}>
-          <Save className="h-4 w-4" />Save as Draft
-        </button>
-
-        {/* Next / Submit */}
-        {step < totalSteps ? (
-          <button type="button"
-            onClick={onNext}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-all"
-            style={{ background: G.accent, boxShadow: `0 4px 12px ${G.accent}55` }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = G.accentHov }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = G.accent }}>
-            Next <ChevronRight className="h-4 w-4" />
-          </button>
-        ) : (
-          <button type="button" onClick={onSubmit}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold text-white transition-all"
-            style={{ background: G.success, boxShadow: '0 4px 12px rgba(18,168,122,0.4)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#0E906A' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = G.success }}>
-            <CheckCircle2 className="h-4 w-4" />Complete Onboarding
-          </button>
-        )}
-      </div>
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════════════════════
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, color: '#EF4444', fontSize: 12 }}>
+      <AlertCircle size={12} />
+      {msg}
+    </div>
+  )
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 style={{ fontSize: 15, fontWeight: 600, color: G.primary, margin: '0 0 16px', padding: '0 0 8px', borderBottom: `1px solid ${G.border}` }}>
+      {children}
+    </h3>
+  )
+}
+
+function CardBox({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      background: G.white, borderRadius: 12, border: `1px solid ${G.border}`,
+      padding: 20, ...style,
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function Grid2({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+      {children}
+    </div>
+  )
+}
+
+function UploadBtn({ label }: { label?: string }) {
+  return (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: G.accent, fontSize: 12, marginTop: 4 }}>
+      <input type="file" style={{ display: 'none' }} onChange={() => toast.success('Document uploaded')} />
+      <Upload size={12} />
+      {label ?? 'Upload Document'}
+    </label>
+  )
+}
+
+function ToggleSwitch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0' }}>
+      <span style={{ fontSize: 13, color: G.secondary, fontWeight: 500 }}>{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(!on)}
+        style={{
+          width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+          background: on ? G.accent : G.border, position: 'relative', flexShrink: 0,
+          transition: 'background 0.2s',
+        }}
+        aria-pressed={on}
+      >
+        <span style={{
+          position: 'absolute', top: 2, width: 16, height: 16, borderRadius: '50%',
+          background: G.white, transform: on ? 'translateX(16px)' : 'translateX(2px)',
+          transition: 'transform 0.2s',
+        }} />
+      </button>
+    </div>
+  )
+}
+
+function CommModePill({
+  active, onClick, label, icon: Icon,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  icon: typeof MessageSquare
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '8px 14px', borderRadius: 999, border: `1.5px solid ${active ? G.accent : G.border}`,
+        background: active ? G.accent + '12' : G.white,
+        color: active ? G.accent : G.secondary,
+        fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+      }}
+    >
+      <Icon size={14} />
+      {label}
+    </button>
+  )
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 export function ClientOnboardPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState<FormState>(INIT)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const set = (k: keyof FormState, v: any) => setForm(p => ({ ...p, [k]: v }))
-  const progress = Math.round((step / STEPS.length) * 100)
+  const [form, setForm] = useState<FormState>({
+    clientName: '', displayName: '', orgType: '', natureOfBusiness: '', industry: '',
+    panNumber: '', panHolderName: '', primaryContactName: '', primaryMobile: '', primaryEmail: '',
+    pc_name: '', pc_designation: '', pc_mobile: '', pc_email: '',
+    sc_name: '', sc_designation: '', sc_mobile: '', sc_email: '',
+    regAddress: '', city: '', state: '', pincode: '', country: 'India',
+    cin: '', dateOfIncorporation: '', authorizedCapital: '', paidUpCapital: '',
+    llpin: '', firmRegNumber: '', partnershipDeedDate: '',
+    proprietorName: '', proprietorAadhaar: '',
+    trustRegNumber: '', trustRegDate: '', societyRegNumber: '',
+    tanNumber: '', tanPassword: '', msmeNumber: '', iecNumber: '',
+    epfNumber: '', epfUsername: '', epfPassword: '',
+    esiNumber: '', esiUsername: '', esiPassword: '',
+    ptNumber: '', fssaiNumber: '', seNumber: '',
+    otherRegName: '', otherRegNumber: '',
+  })
 
-  const handleSubmit = () => {
-    toast.success(`${form.legal_name || 'Organization'} onboarded successfully!`)
-    navigate('/clients')
+  const [gstEntries, setGstEntries] = useState<GSTEntry[]>([
+    { id: uid(), gstin: '', state: '', regType: '', filingFrequency: '', username: '', password: '' },
+  ])
+  const [branches, setBranches] = useState<BranchAddress[]>([])
+  const [additionalContacts, setAdditionalContacts] = useState<ContactPerson[]>([])
+  const [selectedRegistrations, setSelectedRegistrations] = useState<Set<string>>(new Set())
+  const [settingsProfile, setSettingsProfile] = useState<SettingsProfile>({
+    gstEnabled: false,
+    tdsEnabled: false,
+    auditEnabled: false,
+    assignedAdminId: '',
+    assignedArticleId: '',
+    financialYear: '2025-26',
+    clientActive: true,
+    notifyFilingReminders: true,
+    notifyDocRequests: true,
+    notifyNoticeAlerts: true,
+    clientPortalAccess: false,
+    primaryCommMode: 'email',
+    commWhatsAppEnabled: true,
+    commEmailEnabled: true,
+    commPortalEnabled: false,
+    commInternalEnabled: false,
+    whatsappNumber: '',
+    whatsappAutoReply: true,
+    emailPrimary: '',
+    emailCc: '',
+    emailAutoAck: true,
+    portalInviteEmail: '',
+    commPreferredLanguage: 'English',
+    commBusinessHoursOnly: false,
+  })
+  const [moduleDocs, setModuleDocs] = useState<Partial<Record<ModuleKey, ModuleDoc[]>>>({})
+  const [newDocDraft, setNewDocDraft] = useState<Partial<Record<ModuleKey, string>>>({})
+
+  const adminUsers = MOCK_USERS.filter((u: User) => u.role === 'admin' || u.role === 'super_admin')
+  const articleUsers = MOCK_USERS.filter((u: User) => u.role === 'article')
+
+  const patchSettings = (patch: Partial<SettingsProfile>) => {
+    setSettingsProfile(prev => ({ ...prev, ...patch }))
+    setErrors(prev => {
+      const next = { ...prev }
+      Object.keys(patch).forEach(k => delete next[k])
+      return next
+    })
   }
 
-  const handleSaveDraft = () => {
-    toast.success('Draft saved successfully')
+  const f = (key: keyof FormState) => (val: string) => {
+    setForm(prev => ({ ...prev, [key]: val }))
+    setErrors(prev => { const n = { ...prev }; delete n[key]; return n })
   }
 
-  const renderStep = () => {
+  // ── Validation ────────────────────────────────────────────────────────────
+  function validateStep(s: number): boolean {
+    const errs: Record<string, string> = {}
+
+    if (s === 1) {
+      if (!form.clientName.trim()) errs.clientName = 'Client name is required'
+      if (!form.orgType) errs.orgType = 'Organization type is required'
+      if (!form.natureOfBusiness) errs.natureOfBusiness = 'Nature of business is required'
+      if (!form.panNumber.trim()) errs.panNumber = 'PAN number is required'
+      else if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(form.panNumber.toUpperCase())) errs.panNumber = 'Invalid PAN format (AAAAA9999A)'
+      if (!form.panHolderName.trim()) errs.panHolderName = 'PAN holder name is required'
+      if (!form.primaryContactName.trim()) errs.primaryContactName = 'Primary contact name is required'
+      if (!form.primaryMobile.trim()) errs.primaryMobile = 'Mobile number is required'
+      else if (!/^\d{10}$/.test(form.primaryMobile)) errs.primaryMobile = 'Enter valid 10-digit mobile'
+      if (!form.primaryEmail.trim()) errs.primaryEmail = 'Email is required'
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.primaryEmail)) errs.primaryEmail = 'Enter valid email address'
+    }
+
+    if (s === 2) {
+      if (!form.pc_name.trim()) errs.pc_name = 'Primary contact name is required'
+      if (!form.pc_mobile.trim()) errs.pc_mobile = 'Mobile number is required'
+      else if (!/^\d{10}$/.test(form.pc_mobile)) errs.pc_mobile = 'Enter valid 10-digit mobile'
+      if (!form.pc_email.trim()) errs.pc_email = 'Email is required'
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.pc_email)) errs.pc_email = 'Enter valid email address'
+    }
+
+    if (s === 3) {
+      if (!form.regAddress.trim()) errs.regAddress = 'Address is required'
+      if (!form.city.trim()) errs.city = 'City is required'
+      if (!form.state) errs.state = 'State is required'
+      if (!form.pincode.trim()) errs.pincode = 'Pincode is required'
+      else if (!/^\d{6}$/.test(form.pincode)) errs.pincode = 'Enter valid 6-digit pincode'
+      if (!form.country.trim()) errs.country = 'Country is required'
+    }
+
+    if (s === 6) {
+      if (selectedRegistrations.has('GST')) {
+        gstEntries.forEach((g, i) => {
+          if (!g.gstin.trim()) errs[`gst_gstin_${i}`] = 'GSTIN is required'
+          else if (g.gstin.length !== 15) errs[`gst_gstin_${i}`] = 'GSTIN must be 15 characters'
+          if (!g.regType) errs[`gst_regType_${i}`] = 'Registration type is required'
+          if (!g.filingFrequency) errs[`gst_filing_${i}`] = 'Filing frequency is required'
+        })
+      }
+      if (selectedRegistrations.has('TAN')) {
+        if (!form.tanNumber.trim()) errs.tanNumber = 'TAN number is required'
+        else if (!/^[A-Z]{4}[0-9]{5}[A-Z]$/.test(form.tanNumber.toUpperCase())) errs.tanNumber = 'Invalid TAN format (AAAA99999A)'
+      }
+    }
+
+    if (s === 7) {
+      if (!settingsProfile.assignedAdminId) errs.assignedAdminId = 'Assign an admin to this client'
+      if (!settingsProfile.gstEnabled && !settingsProfile.tdsEnabled && !settingsProfile.auditEnabled) {
+        errs.modules = 'Enable at least one compliance module'
+      }
+      const anyComm = settingsProfile.commWhatsAppEnabled || settingsProfile.commEmailEnabled
+        || settingsProfile.commPortalEnabled || settingsProfile.commInternalEnabled
+      if (!anyComm) errs.commMode = 'Enable at least one communication mode'
+      if (settingsProfile.commWhatsAppEnabled && !settingsProfile.whatsappNumber.trim()) {
+        errs.whatsappNumber = 'WhatsApp number is required when WhatsApp is enabled'
+      }
+      if (settingsProfile.commEmailEnabled && !settingsProfile.emailPrimary.trim()) {
+        errs.emailPrimary = 'Primary email is required when Email is enabled'
+      }
+      if (settingsProfile.commPortalEnabled && !settingsProfile.portalInviteEmail.trim()) {
+        errs.portalInviteEmail = 'Portal invite email is required when Portal is enabled'
+      }
+    }
+
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  function syncSettingsFromRegistrations() {
+    const gstEnabled = selectedRegistrations.has('GST')
+    const tdsEnabled = selectedRegistrations.has('TAN')
+    patchSettings({
+      gstEnabled,
+      tdsEnabled,
+      emailPrimary: form.pc_email || form.primaryEmail,
+      portalInviteEmail: form.pc_email || form.primaryEmail,
+      whatsappNumber: form.pc_mobile || form.primaryMobile,
+      commPortalEnabled: false,
+    })
+    setModuleDocs(prev => buildModuleDocsMap(gstEnabled, tdsEnabled, settingsProfile.auditEnabled, prev))
+  }
+
+  function handleModuleToggle(key: 'gstEnabled' | 'tdsEnabled' | 'auditEnabled', enabled: boolean) {
+    patchSettings({ [key]: enabled })
+    const next = {
+      gstEnabled: key === 'gstEnabled' ? enabled : settingsProfile.gstEnabled,
+      tdsEnabled: key === 'tdsEnabled' ? enabled : settingsProfile.tdsEnabled,
+      auditEnabled: key === 'auditEnabled' ? enabled : settingsProfile.auditEnabled,
+    }
+    setModuleDocs(prev => buildModuleDocsMap(next.gstEnabled, next.tdsEnabled, next.auditEnabled, prev))
+  }
+
+  function toggleDocRequired(module: ModuleKey, docId: string) {
+    setModuleDocs(prev => ({
+      ...prev,
+      [module]: (prev[module] ?? []).map(d =>
+        d.id === docId ? { ...d, required: !d.required } : d
+      ),
+    }))
+  }
+
+  function removeModuleDoc(module: ModuleKey, docId: string) {
+    setModuleDocs(prev => ({
+      ...prev,
+      [module]: (prev[module] ?? []).filter(d => d.id !== docId),
+    }))
+  }
+
+  function addModuleDoc(module: ModuleKey, name: string) {
+    if (!name.trim()) return
+    setModuleDocs(prev => ({
+      ...prev,
+      [module]: [...(prev[module] ?? []), { id: uid(), name: name.trim(), required: true }],
+    }))
+  }
+
+  function handleNext() {
+    if (!validateStep(step)) return
+    if (step === 6) {
+      syncSettingsFromRegistrations()
+      setStep(7)
+      return
+    }
+    if (step === 7) {
+      toast.success('Client onboarded successfully!')
+      navigate('/clients')
+      return
+    }
+    setStep(s => s + 1)
+  }
+
+  function handleBack() {
+    setStep(s => Math.max(1, s - 1))
+  }
+
+  // ── GST helpers ───────────────────────────────────────────────────────────
+  function updateGST(idx: number, key: keyof GSTEntry, val: string) {
+    setGstEntries(prev => prev.map((g, i) => {
+      if (i !== idx) return g
+      const updated = { ...g, [key]: val }
+      if (key === 'gstin') updated.state = getGSTState(val)
+      return updated
+    }))
+  }
+
+  function addGST() {
+    setGstEntries(prev => [...prev, { id: uid(), gstin: '', state: '', regType: '', filingFrequency: '', username: '', password: '' }])
+  }
+
+  function removeGST(idx: number) {
+    setGstEntries(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  // ── Branch helpers ────────────────────────────────────────────────────────
+  function addBranch() {
+    setBranches(prev => [...prev, { id: uid(), address: '', city: '', state: '', pincode: '', country: 'India' }])
+  }
+
+  function removeBranch(id: string) {
+    setBranches(prev => prev.filter(b => b.id !== id))
+  }
+
+  function updateBranch(id: string, key: keyof BranchAddress, val: string) {
+    setBranches(prev => prev.map(b => b.id === id ? { ...b, [key]: val } : b))
+  }
+
+  // ── Contact helpers ───────────────────────────────────────────────────────
+  function addContact() {
+    setAdditionalContacts(prev => [...prev, { id: uid(), name: '', designation: '', mobile: '', email: '' }])
+  }
+
+  function removeContact(id: string) {
+    setAdditionalContacts(prev => prev.filter(c => c.id !== id))
+  }
+
+  function updateContact(id: string, key: keyof ContactPerson, val: string) {
+    setAdditionalContacts(prev => prev.map(c => c.id === id ? { ...c, [key]: val } : c))
+  }
+
+  // ── Registration toggle ───────────────────────────────────────────────────
+  function toggleReg(id: string) {
+    setSelectedRegistrations(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  // ── Org type helpers ──────────────────────────────────────────────────────
+  const isCompany = ['Private Limited Company', 'Public Limited Company', 'OPC'].includes(form.orgType)
+  const isLLP = form.orgType === 'LLP'
+  const isPartnership = form.orgType === 'Partnership Firm'
+  const isProprietorship = form.orgType === 'Proprietorship'
+  const isTrust = form.orgType === 'Trust'
+  const isSociety = form.orgType === 'Society'
+  const hasOrgDetails = isCompany || isLLP || isPartnership || isProprietorship || isTrust || isSociety
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step renderers
+  // ─────────────────────────────────────────────────────────────────────────
+  function renderStep1() {
+    return (
+      <div>
+        <SectionTitle>Basic Information</SectionTitle>
+        <Grid2>
+          <div>
+            <Label required>Client Name</Label>
+            <Input value={form.clientName} onChange={v => { f('clientName')(v); if (form.displayName === form.clientName) f('displayName')(v) }} placeholder="Enter client name" />
+            <FieldError msg={errors.clientName} />
+          </div>
+          <div>
+            <Label>Display Name</Label>
+            <Input value={form.displayName} onChange={f('displayName')} placeholder="Short display name" />
+          </div>
+          <div>
+            <Label required>Organization Type</Label>
+            <Select value={form.orgType} onChange={f('orgType')} options={ORG_TYPES} placeholder="Select type" />
+            <FieldError msg={errors.orgType} />
+          </div>
+          <div>
+            <Label required>Nature of Business</Label>
+            <Select value={form.natureOfBusiness} onChange={f('natureOfBusiness')} options={NATURE_OF_BUSINESS} placeholder="Select nature" />
+            <FieldError msg={errors.natureOfBusiness} />
+          </div>
+          <div>
+            <Label>Industry</Label>
+            <Select value={form.industry} onChange={f('industry')} options={INDUSTRIES} placeholder="Select industry" />
+          </div>
+          <div>
+            <Label required>PAN Number</Label>
+            <Input value={form.panNumber} onChange={v => f('panNumber')(v.toUpperCase())} placeholder="AAAAA9999A" maxLength={10} />
+            <FieldError msg={errors.panNumber} />
+          </div>
+          <div>
+            <Label required>PAN Holder Name</Label>
+            <Input value={form.panHolderName} onChange={f('panHolderName')} placeholder="Name as on PAN" />
+            <FieldError msg={errors.panHolderName} />
+          </div>
+          <div>
+            <Label required>Primary Contact Name</Label>
+            <Input value={form.primaryContactName} onChange={f('primaryContactName')} placeholder="Contact person name" />
+            <FieldError msg={errors.primaryContactName} />
+          </div>
+          <div>
+            <Label required>Primary Mobile</Label>
+            <Input value={form.primaryMobile} onChange={f('primaryMobile')} placeholder="10-digit mobile" maxLength={10} />
+            <FieldError msg={errors.primaryMobile} />
+          </div>
+          <div>
+            <Label required>Primary Email</Label>
+            <Input value={form.primaryEmail} onChange={f('primaryEmail')} placeholder="email@example.com" type="email" />
+            <FieldError msg={errors.primaryEmail} />
+          </div>
+        </Grid2>
+      </div>
+    )
+  }
+
+  function renderStep2() {
+    const desigs = getDesignations(form.orgType)
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {/* Primary Contact */}
+        <CardBox>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <SectionTitle>Primary Contact</SectionTitle>
+            <button
+              type="button"
+              onClick={() => {
+                f('pc_name')(form.primaryContactName)
+                f('pc_mobile')(form.primaryMobile)
+                f('pc_email')(form.primaryEmail)
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '4px 10px', borderRadius: 6, border: `1px solid ${G.border}`,
+                background: G.white, color: G.accent, fontSize: 12, cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              <Copy size={12} /> Copy from Basic Info
+            </button>
+          </div>
+          <Grid2>
+            <div>
+              <Label required>Name</Label>
+              <Input value={form.pc_name} onChange={f('pc_name')} placeholder="Contact name" />
+              <FieldError msg={errors.pc_name} />
+            </div>
+            <div>
+              <Label>Designation</Label>
+              <Select value={form.pc_designation} onChange={f('pc_designation')} options={desigs} placeholder="Select designation" />
+            </div>
+            <div>
+              <Label required>Mobile</Label>
+              <Input value={form.pc_mobile} onChange={f('pc_mobile')} placeholder="10-digit mobile" maxLength={10} />
+              <FieldError msg={errors.pc_mobile} />
+            </div>
+            <div>
+              <Label required>Email</Label>
+              <Input value={form.pc_email} onChange={f('pc_email')} placeholder="email@example.com" type="email" />
+              <FieldError msg={errors.pc_email} />
+            </div>
+          </Grid2>
+        </CardBox>
+
+        {/* Secondary Contact */}
+        <CardBox>
+          <SectionTitle>Secondary Contact <span style={{ fontSize: 12, color: G.muted, fontWeight: 400 }}>(optional)</span></SectionTitle>
+          <Grid2>
+            <div>
+              <Label>Name</Label>
+              <Input value={form.sc_name} onChange={f('sc_name')} placeholder="Contact name" />
+            </div>
+            <div>
+              <Label>Designation</Label>
+              <Select value={form.sc_designation} onChange={f('sc_designation')} options={desigs} placeholder="Select designation" />
+            </div>
+            <div>
+              <Label>Mobile</Label>
+              <Input value={form.sc_mobile} onChange={f('sc_mobile')} placeholder="10-digit mobile" maxLength={10} />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input value={form.sc_email} onChange={f('sc_email')} placeholder="email@example.com" type="email" />
+            </div>
+          </Grid2>
+        </CardBox>
+
+        {/* Additional contacts */}
+        {additionalContacts.map((c, idx) => (
+          <CardBox key={c.id}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <SectionTitle>Contact Person {idx + 3}</SectionTitle>
+              <button
+                type="button"
+                onClick={() => removeContact(c.id)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: 0 }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <Grid2>
+              <div>
+                <Label>Name</Label>
+                <Input value={c.name} onChange={v => updateContact(c.id, 'name', v)} placeholder="Contact name" />
+              </div>
+              <div>
+                <Label>Designation</Label>
+                <Select value={c.designation} onChange={v => updateContact(c.id, 'designation', v)} options={desigs} placeholder="Select designation" />
+              </div>
+              <div>
+                <Label>Mobile</Label>
+                <Input value={c.mobile} onChange={v => updateContact(c.id, 'mobile', v)} placeholder="10-digit mobile" maxLength={10} />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input value={c.email} onChange={v => updateContact(c.id, 'email', v)} placeholder="email@example.com" type="email" />
+              </div>
+            </Grid2>
+          </CardBox>
+        ))}
+
+        <button
+          type="button"
+          onClick={addContact}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+            padding: '8px 16px', borderRadius: 8, border: `1.5px dashed ${G.accent}`,
+            background: 'transparent', color: G.accent, fontSize: 13, fontWeight: 500,
+            cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <Plus size={14} /> Add Contact Person
+        </button>
+      </div>
+    )
+  }
+
+  function renderStep3() {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <CardBox>
+          <SectionTitle>Registered Address</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <Label required>Address</Label>
+              <Textarea value={form.regAddress} onChange={f('regAddress')} placeholder="Enter registered address" />
+              <FieldError msg={errors.regAddress} />
+            </div>
+            <Grid2>
+              <div>
+                <Label required>City</Label>
+                <Input value={form.city} onChange={f('city')} placeholder="City" />
+                <FieldError msg={errors.city} />
+              </div>
+              <div>
+                <Label required>State</Label>
+                <Select value={form.state} onChange={f('state')} options={INDIAN_STATES} placeholder="Select state" />
+                <FieldError msg={errors.state} />
+              </div>
+              <div>
+                <Label required>Pincode</Label>
+                <Input value={form.pincode} onChange={f('pincode')} placeholder="6-digit pincode" maxLength={6} />
+                <FieldError msg={errors.pincode} />
+              </div>
+              <div>
+                <Label required>Country</Label>
+                <Select value={form.country} onChange={f('country')} options={['India', 'Other']} placeholder="Select country" />
+                <FieldError msg={errors.country} />
+              </div>
+            </Grid2>
+          </div>
+        </CardBox>
+
+        {/* Branches */}
+        {branches.map((b, idx) => (
+          <CardBox key={b.id}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <SectionTitle>Branch {idx + 1}</SectionTitle>
+              <button
+                type="button"
+                onClick={() => removeBranch(b.id)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: 0 }}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <Label>Address</Label>
+                <Textarea value={b.address} onChange={v => updateBranch(b.id, 'address', v)} placeholder="Branch address" />
+              </div>
+              <Grid2>
+                <div>
+                  <Label>City</Label>
+                  <Input value={b.city} onChange={v => updateBranch(b.id, 'city', v)} placeholder="City" />
+                </div>
+                <div>
+                  <Label>State</Label>
+                  <Select value={b.state} onChange={v => updateBranch(b.id, 'state', v)} options={INDIAN_STATES} placeholder="Select state" />
+                </div>
+                <div>
+                  <Label>Pincode</Label>
+                  <Input value={b.pincode} onChange={v => updateBranch(b.id, 'pincode', v)} placeholder="6-digit pincode" maxLength={6} />
+                </div>
+                <div>
+                  <Label>Country</Label>
+                  <Select value={b.country} onChange={v => updateBranch(b.id, 'country', v)} options={['India', 'Other']} />
+                </div>
+              </Grid2>
+            </div>
+          </CardBox>
+        ))}
+
+        <button
+          type="button"
+          onClick={addBranch}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+            padding: '8px 16px', borderRadius: 8, border: `1.5px dashed ${G.accent}`,
+            background: 'transparent', color: G.accent, fontSize: 13, fontWeight: 500,
+            cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <Plus size={14} /> Add Branch
+        </button>
+      </div>
+    )
+  }
+
+  function renderStep4() {
+    if (!hasOrgDetails) {
+      return (
+        <CardBox style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+          <p style={{ color: G.secondary, fontSize: 14, margin: 0 }}>
+            No additional organization details required for this type.
+          </p>
+        </CardBox>
+      )
+    }
+
+    return (
+      <div>
+        <SectionTitle>Organization Details</SectionTitle>
+        <Grid2>
+          {isCompany && (
+            <>
+              <div>
+                <Label>CIN</Label>
+                <Input value={form.cin} onChange={f('cin')} placeholder="Company Identification Number" />
+              </div>
+              <div>
+                <Label>Date of Incorporation</Label>
+                <Input value={form.dateOfIncorporation} onChange={f('dateOfIncorporation')} type="date" />
+              </div>
+              <div>
+                <Label>Authorized Capital</Label>
+                <Input value={form.authorizedCapital} onChange={f('authorizedCapital')} placeholder="e.g. ₹10,00,000" />
+              </div>
+              <div>
+                <Label>Paid-up Capital</Label>
+                <Input value={form.paidUpCapital} onChange={f('paidUpCapital')} placeholder="e.g. ₹5,00,000" />
+              </div>
+            </>
+          )}
+          {isLLP && (
+            <>
+              <div>
+                <Label>LLPIN</Label>
+                <Input value={form.llpin} onChange={f('llpin')} placeholder="LLP Identification Number" />
+              </div>
+              <div>
+                <Label>Date of Incorporation</Label>
+                <Input value={form.dateOfIncorporation} onChange={f('dateOfIncorporation')} type="date" />
+              </div>
+            </>
+          )}
+          {isPartnership && (
+            <>
+              <div>
+                <Label>Firm Registration Number</Label>
+                <Input value={form.firmRegNumber} onChange={f('firmRegNumber')} placeholder="Registration number" />
+              </div>
+              <div>
+                <Label>Partnership Deed Date</Label>
+                <Input value={form.partnershipDeedDate} onChange={f('partnershipDeedDate')} type="date" />
+              </div>
+            </>
+          )}
+          {isProprietorship && (
+            <>
+              <div>
+                <Label>Proprietor Name</Label>
+                <Input value={form.proprietorName} onChange={f('proprietorName')} placeholder="Proprietor full name" />
+              </div>
+              <div>
+                <Label>Proprietor Aadhaar</Label>
+                <Input value={form.proprietorAadhaar} onChange={f('proprietorAadhaar')} placeholder="12-digit Aadhaar" maxLength={12} />
+              </div>
+            </>
+          )}
+          {isTrust && (
+            <>
+              <div>
+                <Label>Trust Registration Number</Label>
+                <Input value={form.trustRegNumber} onChange={f('trustRegNumber')} placeholder="Registration number" />
+              </div>
+              <div>
+                <Label>Registration Date</Label>
+                <Input value={form.trustRegDate} onChange={f('trustRegDate')} type="date" />
+              </div>
+            </>
+          )}
+          {isSociety && (
+            <div>
+              <Label>Society Registration Number</Label>
+              <Input value={form.societyRegNumber} onChange={f('societyRegNumber')} placeholder="Registration number" />
+            </div>
+          )}
+        </Grid2>
+      </div>
+    )
+  }
+
+  function renderStep5() {
+    return (
+      <div>
+        <SectionTitle>Business & Tax Registrations</SectionTitle>
+        <p style={{ fontSize: 13, color: G.muted, marginBottom: 20, margin: '0 0 20px' }}>
+          Select all applicable registrations for this client.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {REGISTRATIONS.map(reg => {
+            const checked = selectedRegistrations.has(reg.id)
+            return (
+              <label
+                key={reg.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                  border: `1.5px solid ${checked ? G.accent : G.border}`,
+                  background: checked ? '#EFF8FF' : G.white,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleReg(reg.id)}
+                  style={{ display: 'none' }}
+                />
+                <span style={{
+                  width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                  border: `1.5px solid ${checked ? G.accent : G.border}`,
+                  background: checked ? G.accent : G.white,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}>
+                  {checked && <Check size={11} color={G.white} strokeWidth={3} />}
+                </span>
+                <span style={{ fontSize: 13, color: G.primary, fontWeight: 500 }}>
+                  {reg.label}
+                </span>
+              </label>
+            )
+          })}
+        </div>
+
+        {/* BR007 notice */}
+        <div style={{
+          marginTop: 24, padding: '14px 16px', borderRadius: 10,
+          background: '#F0FDF4', border: '1px solid #BBF7D0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        }}>
+          <p style={{ fontSize: 13, color: '#166534', margin: 0 }}>
+            Contract details will be fetched from previous records if available.
+          </p>
+          <button
+            type="button"
+            style={{
+              padding: '6px 14px', borderRadius: 7, border: '1px solid #16A34A',
+              background: 'transparent', color: '#16A34A', fontSize: 12, fontWeight: 500,
+              cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Fetch Previous Contract
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  function renderStep6() {
+    if (selectedRegistrations.size === 0) {
+      return (
+        <CardBox style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+          <p style={{ color: G.secondary, fontSize: 14, margin: 0 }}>
+            No registrations selected. Go back to Step 5 to select applicable registrations.
+          </p>
+        </CardBox>
+      )
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* GST */}
+        {selectedRegistrations.has('GST') && (
+          <CardBox>
+            <SectionTitle>GST Registrations</SectionTitle>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {gstEntries.map((g, idx) => (
+                <div key={g.id} style={{ padding: 16, borderRadius: 8, background: G.canvas, border: `1px solid ${G.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: G.secondary }}>GSTIN Entry {idx + 1}</span>
+                    {gstEntries.length > 1 && (
+                      <button type="button" onClick={() => removeGST(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', padding: 0 }}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <Grid2>
+                    <div>
+                      <Label required>GSTIN</Label>
+                      <Input value={g.gstin} onChange={v => updateGST(idx, 'gstin', v.toUpperCase())} placeholder="15-character GSTIN" maxLength={15} />
+                      <FieldError msg={errors[`gst_gstin_${idx}`]} />
+                      <UploadBtn />
+                    </div>
+                    <div>
+                      <Label>State (auto-filled)</Label>
+                      <Input value={g.state} readOnly placeholder="Auto-filled from GSTIN" style={{ color: G.muted }} />
+                    </div>
+                    <div>
+                      <Label required>Registration Type</Label>
+                      <Select
+                        value={g.regType}
+                        onChange={v => updateGST(idx, 'regType', v)}
+                        options={['Regular Taxpayer', 'Composition Taxpayer', 'Input Service Distributor (ISD)', 'E-Commerce Operator']}
+                        placeholder="Select type"
+                      />
+                      <FieldError msg={errors[`gst_regType_${idx}`]} />
+                    </div>
+                    <div>
+                      <Label required>Filing Frequency</Label>
+                      <Select
+                        value={g.filingFrequency}
+                        onChange={v => updateGST(idx, 'filingFrequency', v)}
+                        options={['Monthly', 'Quarterly']}
+                        placeholder="Select frequency"
+                      />
+                      <FieldError msg={errors[`gst_filing_${idx}`]} />
+                    </div>
+                    <div>
+                      <Label>GST Username</Label>
+                      <Input value={g.username} onChange={v => updateGST(idx, 'username', v)} placeholder="GST portal username" />
+                    </div>
+                    <div>
+                      <Label>GST Password</Label>
+                      <PasswordInput value={g.password} onChange={v => updateGST(idx, 'password', v)} id={`gst_pw_${idx}`} />
+                    </div>
+                  </Grid2>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addGST}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+                  padding: '7px 14px', borderRadius: 8, border: `1.5px dashed ${G.accent}`,
+                  background: 'transparent', color: G.accent, fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                <Plus size={13} /> Add GSTIN
+              </button>
+            </div>
+          </CardBox>
+        )}
+
+        {/* TAN */}
+        {selectedRegistrations.has('TAN') && (
+          <CardBox>
+            <SectionTitle>TAN Registration</SectionTitle>
+            <Grid2>
+              <div>
+                <Label required>TAN Number</Label>
+                <Input value={form.tanNumber} onChange={v => f('tanNumber')(v.toUpperCase())} placeholder="AAAA99999A" maxLength={10} />
+                <FieldError msg={errors.tanNumber} />
+                <UploadBtn />
+              </div>
+              <div>
+                <Label>TAN Username</Label>
+                <Input value={form.tanNumber} readOnly placeholder="Auto-filled as TAN Number" style={{ color: G.muted }} />
+                <span style={{ fontSize: 11, color: G.muted, marginTop: 3, display: 'block' }}>Username is same as TAN Number</span>
+              </div>
+              <div>
+                <Label>TAN Password</Label>
+                <PasswordInput value={form.tanPassword} onChange={f('tanPassword')} id="tan_pw" />
+              </div>
+            </Grid2>
+          </CardBox>
+        )}
+
+        {/* MSME */}
+        {selectedRegistrations.has('MSME') && (
+          <CardBox>
+            <SectionTitle>MSME Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>MSME Number</Label>
+              <Input value={form.msmeNumber} onChange={f('msmeNumber')} placeholder="MSME registration number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* IEC */}
+        {selectedRegistrations.has('IEC') && (
+          <CardBox>
+            <SectionTitle>IEC Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>IEC Number</Label>
+              <Input value={form.iecNumber} onChange={f('iecNumber')} placeholder="Import Export Code" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* EPF */}
+        {selectedRegistrations.has('EPF') && (
+          <CardBox>
+            <SectionTitle>EPF Registration</SectionTitle>
+            <Grid2>
+              <div>
+                <Label>EPF Number</Label>
+                <Input value={form.epfNumber} onChange={f('epfNumber')} placeholder="EPF registration number" />
+                <UploadBtn />
+              </div>
+              <div>
+                <Label>EPF Username</Label>
+                <Input value={form.epfUsername} onChange={f('epfUsername')} placeholder="Portal username" />
+              </div>
+              <div>
+                <Label>EPF Password</Label>
+                <PasswordInput value={form.epfPassword} onChange={f('epfPassword')} id="epf_pw" />
+              </div>
+            </Grid2>
+          </CardBox>
+        )}
+
+        {/* ESI */}
+        {selectedRegistrations.has('ESI') && (
+          <CardBox>
+            <SectionTitle>ESI Registration</SectionTitle>
+            <Grid2>
+              <div>
+                <Label>ESI Number</Label>
+                <Input value={form.esiNumber} onChange={f('esiNumber')} placeholder="ESI registration number" />
+                <UploadBtn />
+              </div>
+              <div>
+                <Label>ESI Username</Label>
+                <Input value={form.esiUsername} onChange={f('esiUsername')} placeholder="Portal username" />
+              </div>
+              <div>
+                <Label>ESI Password</Label>
+                <PasswordInput value={form.esiPassword} onChange={f('esiPassword')} id="esi_pw" />
+              </div>
+            </Grid2>
+          </CardBox>
+        )}
+
+        {/* Professional Tax */}
+        {selectedRegistrations.has('PT') && (
+          <CardBox>
+            <SectionTitle>Professional Tax</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>PT Number</Label>
+              <Input value={form.ptNumber} onChange={f('ptNumber')} placeholder="Professional Tax number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* FSSAI */}
+        {selectedRegistrations.has('FSSAI') && (
+          <CardBox>
+            <SectionTitle>FSSAI Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>FSSAI Number</Label>
+              <Input value={form.fssaiNumber} onChange={f('fssaiNumber')} placeholder="FSSAI license number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* Shop & Establishment */}
+        {selectedRegistrations.has('SE') && (
+          <CardBox>
+            <SectionTitle>Shop & Establishment</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>Shop & Establishment Number</Label>
+              <Input value={form.seNumber} onChange={f('seNumber')} placeholder="Registration number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* Factory License */}
+        {selectedRegistrations.has('FL') && (
+          <CardBox>
+            <SectionTitle>Factory License</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>Factory License Number</Label>
+              <Input value="" onChange={() => {}} placeholder="License number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* Trade License */}
+        {selectedRegistrations.has('TL') && (
+          <CardBox>
+            <SectionTitle>Trade License</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>Trade License Number</Label>
+              <Input value="" onChange={() => {}} placeholder="License number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* RERA */}
+        {selectedRegistrations.has('RERA') && (
+          <CardBox>
+            <SectionTitle>RERA Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>RERA Number</Label>
+              <Input value="" onChange={() => {}} placeholder="RERA registration number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* SEBI */}
+        {selectedRegistrations.has('SEBI') && (
+          <CardBox>
+            <SectionTitle>SEBI Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>SEBI Number</Label>
+              <Input value="" onChange={() => {}} placeholder="SEBI registration number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* 12A */}
+        {selectedRegistrations.has('12A') && (
+          <CardBox>
+            <SectionTitle>12A Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>12A Number</Label>
+              <Input value="" onChange={() => {}} placeholder="12A registration number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* 80G */}
+        {selectedRegistrations.has('80G') && (
+          <CardBox>
+            <SectionTitle>80G Registration</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>80G Number</Label>
+              <Input value="" onChange={() => {}} placeholder="80G registration number" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* NGO Darpan */}
+        {selectedRegistrations.has('NGO') && (
+          <CardBox>
+            <SectionTitle>NGO Darpan</SectionTitle>
+            <div style={{ maxWidth: 360 }}>
+              <Label>NGO Darpan ID</Label>
+              <Input value="" onChange={() => {}} placeholder="Darpan registration ID" />
+              <UploadBtn />
+            </div>
+          </CardBox>
+        )}
+
+        {/* Others */}
+        {selectedRegistrations.has('OTH') && (
+          <CardBox>
+            <SectionTitle>Other Registration</SectionTitle>
+            <Grid2>
+              <div>
+                <Label>Registration Name</Label>
+                <Input value={form.otherRegName} onChange={f('otherRegName')} placeholder="Name of registration" />
+              </div>
+              <div>
+                <Label>Registration Number</Label>
+                <Input value={form.otherRegNumber} onChange={f('otherRegNumber')} placeholder="Registration number" />
+                <UploadBtn />
+              </div>
+            </Grid2>
+          </CardBox>
+        )}
+
+      </div>
+    )
+  }
+
+  function renderStep7() {
+    const enabledModules = [
+      settingsProfile.gstEnabled && 'GST',
+      settingsProfile.tdsEnabled && 'TDS',
+      settingsProfile.auditEnabled && 'Audit',
+    ].filter(Boolean) as string[]
+
+    const moduleKeys: { key: ModuleKey; label: string; enabled: boolean }[] = [
+      { key: 'gst', label: 'GST Filing', enabled: settingsProfile.gstEnabled },
+      { key: 'tds', label: 'TDS Filing', enabled: settingsProfile.tdsEnabled },
+      { key: 'audit', label: 'Statutory Audit', enabled: settingsProfile.auditEnabled },
+    ]
+
+    const totalRequiredDocs = moduleKeys
+      .filter(m => m.enabled)
+      .flatMap(m => moduleDocs[m.key] ?? [])
+      .filter(d => d.required).length
+
+    const selectedRegLabels = REGISTRATIONS
+      .filter(r => selectedRegistrations.has(r.id))
+      .map(r => r.label)
+
+    const primaryCommLabel = COMM_MODES.find(c => c.id === settingsProfile.primaryCommMode)?.label ?? '—'
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <CardBox>
+          <SectionTitle>Compliance Modules</SectionTitle>
+          <p style={{ fontSize: 12, color: G.muted, margin: '0 0 12px' }}>
+            Enable modules for this client. GST and TDS are pre-selected based on registrations from the previous step.
+          </p>
+          <ToggleSwitch
+            label="GST Filing"
+            on={settingsProfile.gstEnabled}
+            onChange={v => handleModuleToggle('gstEnabled', v)}
+          />
+          <ToggleSwitch
+            label="TDS Filing"
+            on={settingsProfile.tdsEnabled}
+            onChange={v => handleModuleToggle('tdsEnabled', v)}
+          />
+          <ToggleSwitch
+            label="Statutory Audit"
+            on={settingsProfile.auditEnabled}
+            onChange={v => handleModuleToggle('auditEnabled', v)}
+          />
+          <FieldError msg={errors.modules} />
+        </CardBox>
+
+        {/* Required documents per enabled module */}
+        {moduleKeys.some(m => m.enabled) && (
+          <CardBox>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <FolderOpen size={16} color={G.accent} />
+              <SectionTitle>Required Documents</SectionTitle>
+            </div>
+            <p style={{ fontSize: 12, color: G.muted, margin: '0 0 16px' }}>
+              Configure documents to collect for each enabled module. Mark as required or optional.
+            </p>
+            {moduleKeys.filter(m => m.enabled).map(({ key, label }) => (
+              <div key={key} style={{ marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${G.border}` }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: G.primary, margin: '0 0 10px' }}>{label}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(moduleDocs[key] ?? []).map(doc => (
+                    <div key={doc.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                      borderRadius: 8, background: G.canvas, border: `1px solid ${G.border}`,
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleDocRequired(key, doc.id)}
+                        style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, border: 'none', cursor: 'pointer',
+                          background: doc.required ? '#DCFCE7' : '#F1F5F9',
+                          color: doc.required ? '#15803D' : G.secondary,
+                        }}
+                      >
+                        {doc.required ? 'Required' : 'Optional'}
+                      </button>
+                      <span style={{ flex: 1, fontSize: 13, color: G.primary }}>{doc.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeModuleDoc(key, doc.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: G.muted, padding: 0 }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <Input
+                    value={newDocDraft[key] ?? ''}
+                    onChange={v => setNewDocDraft(prev => ({ ...prev, [key]: v }))}
+                    placeholder="Add custom document…"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addModuleDoc(key, newDocDraft[key] ?? '')
+                      setNewDocDraft(prev => ({ ...prev, [key]: '' }))
+                    }}
+                    style={{
+                      flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '8px 14px', borderRadius: 8, border: `1px solid ${G.accent}`,
+                      background: G.white, color: G.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    <Plus size={14} /> Add
+                  </button>
+                </div>
+              </div>
+            ))}
+          </CardBox>
+        )}
+
+        <CardBox>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <MessageSquare size={16} color={G.accent} />
+            <SectionTitle>Communication Mode</SectionTitle>
+          </div>
+          <p style={{ fontSize: 12, color: G.muted, margin: '0 0 12px' }}>
+            Choose how your firm communicates with this client for reminders, document requests, and notices.
+          </p>
+
+          <Label>Primary Communication Mode</Label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {COMM_MODES.map(mode => (
+              <CommModePill
+                key={mode.id}
+                active={settingsProfile.primaryCommMode === mode.id}
+                onClick={() => patchSettings({ primaryCommMode: mode.id })}
+                label={mode.label}
+                icon={mode.icon}
+              />
+            ))}
+          </div>
+          <FieldError msg={errors.commMode} />
+
+          <p style={{ fontSize: 11, fontWeight: 600, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px' }}>
+            Enabled Channels
+          </p>
+          <ToggleSwitch
+            label="WhatsApp"
+            on={settingsProfile.commWhatsAppEnabled}
+            onChange={v => patchSettings({ commWhatsAppEnabled: v })}
+          />
+          <ToggleSwitch
+            label="Email"
+            on={settingsProfile.commEmailEnabled}
+            onChange={v => patchSettings({ commEmailEnabled: v })}
+          />
+          <ToggleSwitch
+            label="Client Portal"
+            on={settingsProfile.commPortalEnabled}
+            onChange={v => patchSettings({ commPortalEnabled: v, clientPortalAccess: v || settingsProfile.clientPortalAccess })}
+          />
+          <ToggleSwitch
+            label="In-App (team managed)"
+            on={settingsProfile.commInternalEnabled}
+            onChange={v => patchSettings({ commInternalEnabled: v })}
+          />
+
+          {settingsProfile.commWhatsAppEnabled && (
+            <div style={{ marginTop: 12, padding: 16, borderRadius: 12, background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#15803D', margin: '0 0 12px' }}>WhatsApp Settings</p>
+              <Grid2>
+                <div>
+                  <Label required>WhatsApp Number</Label>
+                  <Input
+                    value={settingsProfile.whatsappNumber}
+                    onChange={v => patchSettings({ whatsappNumber: v })}
+                    placeholder="10-digit mobile"
+                    maxLength={10}
+                  />
+                  <FieldError msg={errors.whatsappNumber} />
+                </div>
+                <div>
+                  <Label>Preferred Language</Label>
+                  <Select
+                    value={settingsProfile.commPreferredLanguage}
+                    onChange={v => patchSettings({ commPreferredLanguage: v })}
+                    options={['English', 'Hindi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu']}
+                  />
+                </div>
+              </Grid2>
+              <ToggleSwitch
+                label="Send auto-reply for document requests"
+                on={settingsProfile.whatsappAutoReply}
+                onChange={v => patchSettings({ whatsappAutoReply: v })}
+              />
+            </div>
+          )}
+
+          {settingsProfile.commEmailEnabled && (
+            <div style={{ marginTop: 12, padding: 16, borderRadius: 12, background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1D4ED8', margin: '0 0 12px' }}>Email Settings</p>
+              <Grid2>
+                <div>
+                  <Label required>Primary Email</Label>
+                  <Input
+                    value={settingsProfile.emailPrimary}
+                    onChange={v => patchSettings({ emailPrimary: v })}
+                    placeholder="client@company.com"
+                    type="email"
+                  />
+                  <FieldError msg={errors.emailPrimary} />
+                </div>
+                <div>
+                  <Label>CC Email(s)</Label>
+                  <Input
+                    value={settingsProfile.emailCc}
+                    onChange={v => patchSettings({ emailCc: v })}
+                    placeholder="accounts@company.com"
+                    type="email"
+                  />
+                </div>
+              </Grid2>
+              <ToggleSwitch
+                label="Send acknowledgement on document receipt"
+                on={settingsProfile.emailAutoAck}
+                onChange={v => patchSettings({ emailAutoAck: v })}
+              />
+            </div>
+          )}
+
+          {settingsProfile.commPortalEnabled && (
+            <div style={{ marginTop: 12, padding: 16, borderRadius: 12, background: '#F5F3FF', border: '1px solid #DDD6FE' }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#6D28D9', margin: '0 0 12px' }}>Client Portal Settings</p>
+              <div style={{ maxWidth: 360 }}>
+                <Label required>Portal Invite Email</Label>
+                <Input
+                  value={settingsProfile.portalInviteEmail}
+                  onChange={v => patchSettings({ portalInviteEmail: v })}
+                  placeholder="Email to send portal login invite"
+                  type="email"
+                />
+                <FieldError msg={errors.portalInviteEmail} />
+              </div>
+              <ToggleSwitch
+                label="Enable client portal access"
+                on={settingsProfile.clientPortalAccess}
+                onChange={v => patchSettings({ clientPortalAccess: v })}
+              />
+            </div>
+          )}
+
+          <div style={{ marginTop: 12 }}>
+            <ToggleSwitch
+              label="Send communications during business hours only (9 AM – 6 PM)"
+              on={settingsProfile.commBusinessHoursOnly}
+              onChange={v => patchSettings({ commBusinessHoursOnly: v })}
+            />
+          </div>
+        </CardBox>
+
+        <CardBox>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Users size={16} color={G.accent} />
+            <SectionTitle>Team Assignment</SectionTitle>
+          </div>
+          <Grid2>
+            <div>
+              <Label required>Assigned Admin (CA)</Label>
+              <select
+                value={settingsProfile.assignedAdminId}
+                onChange={e => patchSettings({ assignedAdminId: e.target.value })}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 8,
+                  border: `1px solid ${G.border}`, fontSize: 14, color: G.primary, background: G.white,
+                  outline: 'none', fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                }}
+              >
+                <option value="">Select admin…</option>
+                {adminUsers.map(u => (
+                  <option key={u.id} value={String(u.id)}>{u.full_name}</option>
+                ))}
+              </select>
+              <FieldError msg={errors.assignedAdminId} />
+            </div>
+            <div>
+              <Label>Assigned Article</Label>
+              <select
+                value={settingsProfile.assignedArticleId}
+                onChange={e => patchSettings({ assignedArticleId: e.target.value })}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 8,
+                  border: `1px solid ${G.border}`, fontSize: 14, color: G.primary, background: G.white,
+                  outline: 'none', fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                }}
+              >
+                <option value="">Select article (optional)…</option>
+                {articleUsers.map(u => (
+                  <option key={u.id} value={String(u.id)}>{u.full_name}</option>
+                ))}
+              </select>
+            </div>
+          </Grid2>
+        </CardBox>
+
+        <CardBox>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Settings size={16} color={G.accent} />
+            <SectionTitle>Client Settings</SectionTitle>
+          </div>
+          <Grid2>
+            <div>
+              <Label>Financial Year</Label>
+              <Select
+                value={settingsProfile.financialYear}
+                onChange={v => patchSettings({ financialYear: v })}
+                options={FY_OPTIONS}
+                placeholder="Select FY"
+              />
+            </div>
+            <div>
+              <Label>Client Status</Label>
+              <Select
+                value={settingsProfile.clientActive ? 'Active' : 'Inactive'}
+                onChange={v => patchSettings({ clientActive: v === 'Active' })}
+                options={['Active', 'Inactive']}
+              />
+            </div>
+          </Grid2>
+          {!settingsProfile.commPortalEnabled && (
+            <div style={{ marginTop: 8 }}>
+              <ToggleSwitch
+                label="Enable client portal access"
+                on={settingsProfile.clientPortalAccess}
+                onChange={v => patchSettings({ clientPortalAccess: v })}
+              />
+            </div>
+          )}
+        </CardBox>
+
+        <CardBox>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <Bell size={16} color={G.accent} />
+            <SectionTitle>Notification Preferences</SectionTitle>
+          </div>
+          <ToggleSwitch
+            label="Filing due date reminders"
+            on={settingsProfile.notifyFilingReminders}
+            onChange={v => patchSettings({ notifyFilingReminders: v })}
+          />
+          <ToggleSwitch
+            label="Document request alerts"
+            on={settingsProfile.notifyDocRequests}
+            onChange={v => patchSettings({ notifyDocRequests: v })}
+          />
+          <ToggleSwitch
+            label="Government notice alerts"
+            on={settingsProfile.notifyNoticeAlerts}
+            onChange={v => patchSettings({ notifyNoticeAlerts: v })}
+          />
+        </CardBox>
+
+        <CardBox>
+          <SectionTitle>Onboarding Summary</SectionTitle>
+          <p style={{ fontSize: 12, color: G.muted, margin: '0 0 16px' }}>
+            Review the client profile before submitting.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 24px' }}>
+            {[
+              { k: 'Client Name', v: form.clientName || '—' },
+              { k: 'Organization Type', v: form.orgType || '—' },
+              { k: 'PAN', v: form.panNumber || '—' },
+              { k: 'Primary Contact', v: form.pc_name || form.primaryContactName || '—' },
+              { k: 'Location', v: [form.city, form.state].filter(Boolean).join(', ') || '—' },
+              { k: 'Financial Year', v: settingsProfile.financialYear },
+              { k: 'Registrations', v: selectedRegLabels.length ? selectedRegLabels.join(', ') : 'None selected' },
+              { k: 'Modules Enabled', v: enabledModules.length ? enabledModules.join(', ') : 'None' },
+              { k: 'Communication', v: primaryCommLabel },
+              { k: 'Required Documents', v: totalRequiredDocs ? `${totalRequiredDocs} documents configured` : 'None' },
+              {
+                k: 'Assigned Team',
+                v: [
+                  adminUsers.find(u => String(u.id) === settingsProfile.assignedAdminId)?.full_name,
+                  articleUsers.find(u => String(u.id) === settingsProfile.assignedArticleId)?.full_name,
+                ].filter(Boolean).join(' · ') || '—',
+              },
+              { k: 'Status', v: settingsProfile.clientActive ? 'Active' : 'Inactive' },
+            ].map(row => (
+              <div key={row.k}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px' }}>{row.k}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: G.primary, margin: 0 }}>{row.v}</p>
+              </div>
+            ))}
+          </div>
+          {selectedRegistrations.has('GST') && gstEntries.some(g => g.gstin) && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${G.border}` }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: G.muted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px' }}>GST Filing Due Days</p>
+              {gstEntries.filter(g => g.gstin).map(g => (
+                <p key={g.id} style={{ fontSize: 12, color: G.secondary, margin: '0 0 4px' }}>
+                  {g.gstin}: GSTR-1 → {g.gstr1Due || '—'}th · GSTR-3B → {g.gstr3bDue || '—'}th · GSTR-9/9C → {g.gstr9Due || '31'} Dec
+                </p>
+              ))}
+            </div>
+          )}
+        </CardBox>
+      </div>
+    )
+  }
+
+  function renderCurrentStep() {
     switch (step) {
-      case 1: return <Step1 f={form} set={set} />
-      case 2: return <Step2 f={form} set={set} />
-      case 3: return <Step3 f={form} set={set} />
-      case 4: return <Step4 f={form} set={set} />
-      case 5: return <Step5 f={form} set={set} />
-      case 6: return <Step6 f={form} set={set} />
-      case 7: return <Step7 f={form} set={set} />
-      case 8: return <Step8 f={form} set={set} />
-      case 9: return <Step9 f={form} set={set} />
-      case 10: return <Step10 f={form} set={set} />
-      case 11: return <Step11 f={form} set={set} />
-      case 12: return <Step12 f={form} set={set} />
-      case 13: return <Step13 f={form} set={set} />
-      case 14: return <Step14 f={form} set={set} />
-      case 15: return <Step15 f={form} set={set} />
-      case 16: return <Step16 f={form} />
+      case 1: return renderStep1()
+      case 2: return renderStep2()
+      case 3: return renderStep3()
+      case 4: return renderStep4()
+      case 5: return renderStep5()
+      case 6: return renderStep6()
+      case 7: return renderStep7()
       default: return null
     }
   }
 
-  const currentStepMeta = STEPS[step - 1]
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // Main render
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: G.canvas }}>
-
-      {/* ── TOP HEADER ────────────────────────────────────────── */}
-      <div style={{ background: G.white, borderBottom: `1.5px solid ${G.divider}`, boxShadow: '0 1px 3px rgba(13,31,53,0.04)' }}>
-
-        {/* Title Bar */}
-        <div className="px-6 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: G.accent + '15', border: `1.5px solid ${G.accent}44` }}>
-              <Building2 className="h-5 w-5" style={{ color: G.accent }} />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: G.accent }}>AuditLens</p>
-              <h1 className="text-lg font-bold leading-tight" style={{ color: G.primary }}>Organization Onboarding</h1>
-            </div>
-          </div>
-
-          {/* Overall progress */}
-          <div className="flex items-center gap-3 min-w-[280px]">
-            <div className="flex-1">
-              <div className="flex justify-between text-[10px] font-semibold mb-1" style={{ color: G.muted }}>
-                <span>Overall progress</span>
-                <span style={{ color: G.accent }}>{progress}%</span>
-              </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: G.divider }}>
-                <div className="h-1.5 rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${G.accent}, #38B2F0)` }} />
-              </div>
-            </div>
-            <span className="text-xs font-bold tabular-nums px-2.5 py-1 rounded-lg shrink-0"
-              style={{ background: G.accent + '12', color: G.accent }}>
-              {step}/{STEPS.length}
-            </span>
-          </div>
+    <div style={{
+      minHeight: '100vh', background: G.canvas, fontFamily: 'Inter, sans-serif',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Top header */}
+      <div style={{
+        background: G.white, borderBottom: `1px solid ${G.border}`,
+        padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: G.primary, margin: 0 }}>Client Onboarding</h1>
+          <p style={{ fontSize: 13, color: G.muted, margin: '2px 0 0' }}>Complete all steps to onboard a new client</p>
         </div>
-
-        {/* Horizontal Stepper */}
-        <div style={{ borderTop: `1px solid ${G.divider}` }}>
-          <HorizontalStepper currentStep={step} onStepClick={setStep} />
+        <div style={{
+          padding: '6px 14px', borderRadius: 20,
+          background: '#EFF8FF', border: `1px solid ${G.accent}`,
+          fontSize: 13, fontWeight: 600, color: G.accent,
+        }}>
+          Step {step} of 7
         </div>
       </div>
 
-      {/* ── MAIN BODY ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-6 py-6">
-          {/* Step header */}
-          <div className="mb-5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-                style={{ background: G.accent + '15', color: G.accent }}>
-                Step {step} of {STEPS.length}
-              </span>
-              <span className="text-[10px]" style={{ color: G.muted }}>· {currentStepMeta.group}</span>
+      {/* Body */}
+      <div style={{ flex: 1, maxWidth: 1200, margin: '0 auto', width: '100%', padding: '32px 24px' }}>
+
+        {/* Horizontal step indicator */}
+        <div style={{
+          background: G.white, borderRadius: 16, border: `1px solid ${G.border}`,
+          padding: '20px 24px', marginBottom: 24,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+            {STEPS_META.map((s, idx) => {
+              const done = step > s.id
+              const active = step === s.id
+              const Icon = s.icon
+              return (
+                <div key={s.id} style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
+                  {idx > 0 && (
+                    <div style={{
+                      flex: 1, height: 2, marginTop: 16, marginRight: 6,
+                      background: step > idx ? '#16A34A' : G.border,
+                      transition: 'background 0.2s',
+                    }} />
+                  )}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    flexShrink: 0, width: idx === 0 || idx === STEPS_META.length - 1 ? 88 : 72,
+                  }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: done ? '#DCFCE7' : active ? G.accent : G.canvas,
+                      border: `2px solid ${done ? '#16A34A' : active ? G.accent : G.border}`,
+                      transition: 'all 0.2s',
+                    }}>
+                      {done
+                        ? <Check size={15} color="#16A34A" strokeWidth={2.5} />
+                        : <Icon size={15} color={active ? G.white : G.muted} />
+                      }
+                    </div>
+                    <p style={{
+                      fontSize: 10, fontWeight: active ? 600 : 500, textAlign: 'center',
+                      color: active ? G.primary : done ? '#16A34A' : G.muted,
+                      margin: '6px 0 0', lineHeight: 1.3,
+                    }}>
+                      {s.label}
+                    </p>
+                  </div>
+                  {idx < STEPS_META.length - 1 && (
+                    <div style={{
+                      flex: 1, height: 2, marginTop: 16, marginLeft: 6,
+                      background: step > s.id ? '#16A34A' : G.border,
+                      transition: 'background 0.2s',
+                    }} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Form card */}
+        <div style={{ width: '100%' }}>
+          <div style={{
+            background: G.white, borderRadius: 16, border: `1px solid ${G.border}`,
+            padding: 32, minHeight: 480,
+          }}>
+            <div style={{ marginBottom: 28 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: G.primary, margin: '0 0 4px' }}>
+                {STEPS_META[step - 1].label}
+              </h2>
+              <p style={{ fontSize: 13, color: G.muted, margin: 0 }}>
+                {step === 1 && 'Enter the client\'s core identification and contact details.'}
+                {step === 2 && 'Provide primary and secondary contact information.'}
+                {step === 3 && 'Enter the registered address and any branch locations.'}
+                {step === 4 && 'Provide organization-specific regulatory details.'}
+                {step === 5 && 'Select all business and tax registrations applicable to this client.'}
+                {step === 6 && 'Enter details for each selected registration.'}
+                {step === 7 && 'Configure modules, team assignment, and notification preferences before submitting.'}
+              </p>
             </div>
-            <h2 className="text-2xl font-bold" style={{ color: G.primary }}>{currentStepMeta.fullLabel}</h2>
+            {renderCurrentStep()}
           </div>
 
-          {/* Form Card — full width, no max-width constraint */}
-          <div className="rounded-2xl p-7"
-            style={{ background: G.white, border: `1px solid ${G.divider}`, boxShadow: '0 2px 12px rgba(13,31,53,0.06)' }}>
-            {renderStep()}
+          {/* Footer nav */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: 20, padding: '16px 24px',
+            background: G.white, borderRadius: 12, border: `1px solid ${G.border}`,
+          }}>
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={step === 1}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 20px', borderRadius: 8,
+                border: `1px solid ${G.border}`, background: G.white,
+                color: step === 1 ? G.muted : G.secondary,
+                fontSize: 14, fontWeight: 500, cursor: step === 1 ? 'not-allowed' : 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              <ChevronLeft size={16} /> Back
+            </button>
 
-            {/* Navigation buttons inside the card */}
-            <NavigationButtons
-              step={step}
-              totalSteps={STEPS.length}
-              onBack={() => setStep(s => Math.max(1, s - 1))}
-              onNext={() => setStep(s => Math.min(STEPS.length, s + 1))}
-              onSaveDraft={handleSaveDraft}
-              onSubmit={handleSubmit}
-            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              {STEPS_META.map(s => (
+                <div
+                  key={s.id}
+                  style={{
+                    width: step === s.id ? 20 : 6, height: 6, borderRadius: 3,
+                    background: step > s.id ? '#16A34A' : step === s.id ? G.accent : G.border,
+                    transition: 'all 0.2s',
+                  }}
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNext}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 24px', borderRadius: 8,
+                border: 'none', background: G.accent,
+                color: G.white, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {step === 7 ? (
+                <><Check size={15} /> Submit Client</>
+              ) : (
+                <>Next <ChevronRight size={16} /></>
+              )}
+            </button>
           </div>
         </div>
       </div>

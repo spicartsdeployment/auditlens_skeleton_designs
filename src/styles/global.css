@@ -155,23 +155,23 @@
   }
 
   /* ════════════════════════════════════════════════════════
-     KPI STAT CARD — all white, gray borders (no color tints)
-     Depth comes from gray-scale hierarchy, not color
+     KPI STAT CARD TINTS
      ════════════════════════════════════════════════════════ */
-  .stat-card-primary,
-  .stat-card-accent,
-  .stat-card-warning,
-  .stat-card-danger {
-    background-color: #FFFFFF;
-    border-color: #E2E8F0;
-    box-shadow: 0 1px 3px 0 rgba(15,23,42,0.06);
+  .stat-card-primary {
+    background: linear-gradient(135deg, rgba(5,132,199,0.06) 0%, rgba(5,132,199,0.02) 100%);
+    border-color: rgba(5,132,199,0.18);
   }
-  .stat-card-primary:hover,
-  .stat-card-accent:hover,
-  .stat-card-warning:hover,
-  .stat-card-danger:hover {
-    border-color: #CBD5E1;
-    box-shadow: 0 4px 12px 0 rgba(15,23,42,0.10);
+  .stat-card-accent {
+    background: linear-gradient(135deg, rgba(15,118,110,0.06) 0%, rgba(13,148,136,0.02) 100%);
+    border-color: rgba(15,118,110,0.18);
+  }
+  .stat-card-warning {
+    background: linear-gradient(135deg, rgba(180,83,9,0.06) 0%, rgba(217,119,6,0.02) 100%);
+    border-color: rgba(180,83,9,0.18);
+  }
+  .stat-card-danger {
+    background: linear-gradient(135deg, rgba(185,28,28,0.06) 0%, rgba(220,38,38,0.02) 100%);
+    border-color: rgba(185,28,28,0.18);
   }
 
   /* ════════════════════════════════════════════════════════
@@ -244,40 +244,30 @@
   .btn-dark:hover { background-color: #1E293B; }
 
   /* ════════════════════════════════════════════════════════
-     BADGES — gray canvas base, semantic text color only
-     Background: #F8FAFC | Border: #E2E8F0 | Text: semantic
+     BADGES — reference 9px font, rounded-full
      ════════════════════════════════════════════════════════ */
   .badge {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 9999px;
-    padding: 2px 8px;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
+    @apply inline-flex items-center rounded-full px-2 py-0.5
+           text-[9px] font-bold uppercase tracking-tight;
   }
-  /* Status text colors — minimal, purposeful */
-  .badge-draft      { @apply badge; color: #64748B; }
-  .badge-todo       { @apply badge; color: #64748B; }
-  .badge-pending    { @apply badge; color: #92400E; }   /* amber-800 4.9:1 on F8FAFC ✓ */
-  .badge-inprogress { @apply badge; color: #1E40AF; }   /* blue-800  5.4:1 on F8FAFC ✓ */
-  .badge-inreview   { @apply badge; color: #1E40AF; }
-  .badge-submitted  { @apply badge; color: #065F46; }   /* emerald-800 6.7:1 ✓ */
-  .badge-approved   { @apply badge; color: #166534; }   /* green-800 6.8:1 ✓ */
-  .badge-filed      { @apply badge; color: #166534; }
-  .badge-done       { @apply badge; color: #166534; }
-  .badge-overdue    { @apply badge; color: #991B1B; }   /* red-800   6.5:1 ✓ */
-  .badge-critical   { @apply badge; color: #7F1D1D; border-color: #FECACA; }
+  .badge-draft      { @apply badge bg-slate-100    text-slate-600; }
+  .badge-todo       { @apply badge bg-slate-100    text-slate-600; }
+  .badge-pending    { @apply badge bg-orange-50    text-orange-700   border border-orange-100; }
+  .badge-inprogress { @apply badge bg-blue-50      text-blue-700     border border-blue-100; }
+  .badge-inreview   { @apply badge bg-blue-50      text-blue-700     border border-blue-100; }
+  .badge-submitted  { @apply badge bg-emerald-50   text-emerald-700  border border-emerald-100; }
+  .badge-approved   { @apply badge bg-green-50     text-green-700    border border-green-100; }
+  .badge-filed      { @apply badge bg-green-50     text-green-700    border border-green-100; }
+  .badge-done       { @apply badge bg-green-50     text-green-700    border border-green-100; }
+  .badge-overdue    { @apply badge bg-red-50       text-red-700      border border-red-100; }
+  .badge-critical   { @apply badge bg-red-100      text-red-800; }
 
   /* ── Severity ─────────────────────────────────────────── */
-  .severity-critical { @apply badge; color: #7F1D1D; border-color: #FECACA; }
-  .severity-high     { @apply badge; color: #7C2D12; border-color: #FED7AA; }
-  .severity-medium   { @apply badge; color: #92400E; border-color: #FDE68A; }
-  .severity-low      { @apply badge; color: #1E3A8A; border-color: #BFDBFE; }
-  .severity-info     { @apply badge; color: #475569; }
+  .severity-critical { @apply badge bg-red-100    text-red-800; }
+  .severity-high     { @apply badge bg-orange-100 text-orange-800; }
+  .severity-medium   { @apply badge bg-amber-100  text-amber-700; }
+  .severity-low      { @apply badge bg-blue-50    text-blue-700; }
+  .severity-info     { @apply badge bg-slate-100  text-slate-600; }
 
   /* ════════════════════════════════════════════════════════
      NAV STATES — sidebar icon rail
@@ -405,23 +395,4 @@
   width: 4px; height: 4px;
   border-radius: 9999px;
   background: #FFFFFF;
-}
-
-/* ── Thin scrollbar (webkit) ─────────────────────────────── */
-.overflow-y-scroll::-webkit-scrollbar,
-.overflow-y-auto::-webkit-scrollbar {
-  width: 4px;
-}
-.overflow-y-scroll::-webkit-scrollbar-track,
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: transparent;
-}
-.overflow-y-scroll::-webkit-scrollbar-thumb,
-.overflow-y-auto::-webkit-scrollbar-thumb {
-  background: #E2E8F0;
-  border-radius: 999px;
-}
-.overflow-y-scroll::-webkit-scrollbar-thumb:hover,
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: #CBD5E1;
 }

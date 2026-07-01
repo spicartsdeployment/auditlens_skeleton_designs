@@ -227,6 +227,8 @@ export interface ThreadExt extends Thread {
   last_message?: string
   last_message_at?: string
   participants?: number[]
+  pinned?: boolean
+  typing?: boolean
 }
 export interface MessageExt extends Message {
   source: ChannelType
@@ -249,12 +251,12 @@ export const MOCK_THREADS: ThreadExt[] = [
   },
   {
     id: 3, firm_id: 1, title: 'Q4 TDS Coordination', is_group: true, created_at: '2026-06-20T09:00:00Z',
-    channel: 'internal', participants: [2, 4], unread_count: 1,
+    channel: 'internal', participants: [2, 4], unread_count: 1, pinned: true,
     last_message: 'Form 16 is uploaded. TDS challan still pending from client.', last_message_at: '2026-06-20T09:15:00Z',
   },
   {
     id: 4, firm_id: 1, title: 'Rahul Desai (Sunrise Textiles)', is_group: false, created_at: '2026-06-18T14:00:00Z',
-    channel: 'whatsapp', client_id: 1, client_name: 'Sunrise Textiles', unread_count: 2,
+    channel: 'whatsapp', client_id: 1, client_name: 'Sunrise Textiles', unread_count: 2, pinned: true,
     last_message: "I'll share the Balance Sheet tonight, sorry for delay.", last_message_at: '2026-06-22T20:30:00Z',
   },
   {

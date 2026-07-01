@@ -4,7 +4,7 @@ import {
   AlertTriangle, Clock, Users, Activity, FileCheck, Folder, MessageSquare, Eye,
   PenLine, BarChart2, Shield, Search, Upload, Paperclip, AlertCircle, TrendingUp,
   RefreshCw, XCircle, CheckSquare, Circle, MoreHorizontal, ArrowRight,
-  ClipboardList, Star, Zap, Settings
+  ClipboardList, Star, Zap, Settings, ArrowLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -57,46 +57,37 @@ const ENGAGEMENTS = [
 
 const STAGE_STATUS: Record<number, Record<string, { pct: number; pending: number; exceptions: number; done: boolean }>> = {
   1: {
-    planning:         { pct: 100, pending: 0,  exceptions: 0, done: true  },
-    questionnaires:   { pct: 80,  pending: 2,  exceptions: 1, done: false },
-    doc_requests:     { pct: 65,  pending: 7,  exceptions: 3, done: false },
-    risk_assessment:  { pct: 90,  pending: 1,  exceptions: 2, done: false },
-    gst_verification: { pct: 55,  pending: 4,  exceptions: 5, done: false },
-    tds_verification: { pct: 70,  pending: 3,  exceptions: 2, done: false },
-    caro:             { pct: 45,  pending: 8,  exceptions: 4, done: false },
-    working_papers:   { pct: 40,  pending: 12, exceptions: 6, done: false },
-    observations:     { pct: 30,  pending: 5,  exceptions: 0, done: false },
-    mgmt_responses:   { pct: 20,  pending: 4,  exceptions: 0, done: false },
-    review:           { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    signoff:          { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    preliminary:    { pct: 85,  pending: 2,  exceptions: 1, done: false },
+    caro:           { pct: 45,  pending: 8,  exceptions: 4, done: false },
+    reconciliation: { pct: 62,  pending: 4,  exceptions: 5, done: false },
+    documentation:  { pct: 52,  pending: 9,  exceptions: 3, done: false },
+    checklist:      { pct: 40,  pending: 6,  exceptions: 0, done: false },
+    observations:   { pct: 30,  pending: 5,  exceptions: 0, done: false },
+    review:         { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    signoff:        { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    tax_forms:      { pct: 0,   pending: 0,  exceptions: 0, done: false },
   },
   2: {
-    planning:         { pct: 60,  pending: 3,  exceptions: 0, done: false },
-    questionnaires:   { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    doc_requests:     { pct: 10,  pending: 15, exceptions: 0, done: false },
-    risk_assessment:  { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    gst_verification: { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    tds_verification: { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    caro:             { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    working_papers:   { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    observations:     { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    mgmt_responses:   { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    review:           { pct: 0,   pending: 0,  exceptions: 0, done: false },
-    signoff:          { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    preliminary:    { pct: 30,  pending: 3,  exceptions: 0, done: false },
+    caro:           { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    reconciliation: { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    documentation:  { pct: 10,  pending: 15, exceptions: 0, done: false },
+    checklist:      { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    observations:   { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    review:         { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    signoff:        { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    tax_forms:      { pct: 10,  pending: 5,  exceptions: 0, done: false },
   },
   3: {
-    planning:         { pct: 100, pending: 0,  exceptions: 0, done: true  },
-    questionnaires:   { pct: 100, pending: 0,  exceptions: 0, done: true  },
-    doc_requests:     { pct: 100, pending: 0,  exceptions: 0, done: true  },
-    risk_assessment:  { pct: 100, pending: 0,  exceptions: 1, done: true  },
-    gst_verification: { pct: 95,  pending: 1,  exceptions: 2, done: false },
-    tds_verification: { pct: 100, pending: 0,  exceptions: 0, done: true  },
-    caro:             { pct: 90,  pending: 2,  exceptions: 1, done: false },
-    working_papers:   { pct: 85,  pending: 3,  exceptions: 2, done: false },
-    observations:     { pct: 100, pending: 0,  exceptions: 0, done: true  },
-    mgmt_responses:   { pct: 80,  pending: 1,  exceptions: 0, done: false },
-    review:           { pct: 60,  pending: 2,  exceptions: 0, done: false },
-    signoff:          { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    preliminary:    { pct: 100, pending: 0,  exceptions: 1, done: true  },
+    caro:           { pct: 90,  pending: 2,  exceptions: 1, done: false },
+    reconciliation: { pct: 97,  pending: 1,  exceptions: 2, done: false },
+    documentation:  { pct: 92,  pending: 3,  exceptions: 2, done: false },
+    checklist:      { pct: 85,  pending: 2,  exceptions: 0, done: false },
+    observations:   { pct: 100, pending: 0,  exceptions: 0, done: true  },
+    review:         { pct: 60,  pending: 2,  exceptions: 0, done: false },
+    signoff:        { pct: 0,   pending: 0,  exceptions: 0, done: false },
+    tax_forms:      { pct: 0,   pending: 0,  exceptions: 0, done: false },
   },
 }
 
@@ -175,6 +166,45 @@ const ACTIVITIES = [
   { time: '2d ago', text: 'GST ITC reconciliation working paper uploaded', user: 'SI' },
 ]
 
+// ─── Checklist mock data ─────────────────────────────────────────────────────
+type ChecklistItem = {
+  id: string; sectionNo: string; itemNo: string; question: string
+  answerType: 'yes_no_na' | 'text' | 'tabular'
+  answer: string; documentation: string; location: string; remarks: string; isCustom: boolean
+}
+
+const CHECKLIST_SECTIONS = [
+  { no: '1', name: 'General' },
+  { no: '2', name: 'Revenue' },
+  { no: '3', name: 'Expenses' },
+  { no: '4', name: 'GST Compliance' },
+  { no: '5', name: 'TDS Compliance' },
+]
+
+const INITIAL_CHECKLIST: ChecklistItem[] = [
+  { id: 'c1.1', sectionNo: '1', itemNo: '1.1', question: 'Are the books of account maintained as per prescribed format?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-BOA-01', remarks: '', isCustom: false },
+  { id: 'c1.2', sectionNo: '1', itemNo: '1.2', question: 'Is the accounting software used compliant and auditable?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-SW-01', remarks: '', isCustom: false },
+  { id: 'c1.3', sectionNo: '1', itemNo: '1.3', question: 'Are all bank accounts reconciled monthly?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-BNK-01', remarks: '', isCustom: false },
+  { id: 'c2.1', sectionNo: '2', itemNo: '2.1', question: 'Is the nature of business and revenue streams identified?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-REV-01', remarks: '', isCustom: false },
+  { id: 'c2.2', sectionNo: '2', itemNo: '2.2', question: 'Is revenue recognised in accordance with the applicable standard (Ind AS 115/AS 9)?', answerType: 'yes_no_na', answer: '', documentation: 'Pending', location: '', remarks: 'Verify with CA', isCustom: false },
+  { id: 'c2.3', sectionNo: '2', itemNo: '2.3', question: 'Are contracts, POs, work orders, and performance obligations documented?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-REV-02', remarks: '', isCustom: false },
+  { id: 'c2.4', sectionNo: '2', itemNo: '2.4', question: 'Is cut-off at period end properly checked, including unbilled revenue?', answerType: 'yes_no_na', answer: '', documentation: 'Pending', location: '', remarks: '', isCustom: false },
+  { id: 'c2.5', sectionNo: '2', itemNo: '2.5', question: 'Is revenue reconciled with GST returns / sales registers?', answerType: 'yes_no_na', answer: 'No', documentation: 'Obtained', location: 'WP-GST-REC', remarks: 'Mismatch ₹4.2L — under review', isCustom: false },
+  { id: 'c2.6', sectionNo: '2', itemNo: '2.6', question: 'Are disclosures on accounting policy, disaggregation, and significant judgements adequate?', answerType: 'yes_no_na', answer: '', documentation: 'Pending', location: '', remarks: '', isCustom: false },
+  { id: 'c3.1', sectionNo: '3', itemNo: '3.1', question: 'Are major expense heads analytically reviewed?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-EXP-01', remarks: '', isCustom: false },
+  { id: 'c3.2', sectionNo: '3', itemNo: '3.2', question: 'Are capital vs revenue expenditure classifications appropriate?', answerType: 'yes_no_na', answer: '', documentation: 'Pending', location: '', remarks: '', isCustom: false },
+  { id: 'c3.3', sectionNo: '3', itemNo: '3.3', question: 'Are provisions made for all known liabilities?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-PROV-01', remarks: '', isCustom: false },
+  { id: 'c3.4', sectionNo: '3', itemNo: '3.4', question: 'Is depreciation computed as per applicable rates?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-DEP-01', remarks: '', isCustom: false },
+  { id: 'c4.1', sectionNo: '4', itemNo: '4.1', question: 'Is ITC availed matching GSTR-2B/2A?', answerType: 'yes_no_na', answer: 'No', documentation: 'Obtained', location: 'WP-GST-01', remarks: 'Mismatch ₹6.2L', isCustom: false },
+  { id: 'c4.2', sectionNo: '4', itemNo: '4.2', question: 'Are outward supplies reconciled with books?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-GST-02', remarks: '', isCustom: false },
+  { id: 'c4.3', sectionNo: '4', itemNo: '4.3', question: 'Are RCM liabilities identified and paid?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-GST-03', remarks: '', isCustom: false },
+  { id: 'c4.4', sectionNo: '4', itemNo: '4.4', question: 'Are GST returns filed on time?', answerType: 'yes_no_na', answer: 'No', documentation: 'Obtained', location: 'WP-GST-04', remarks: 'Delays in Aug and Nov 2025', isCustom: false },
+  { id: 'c5.1', sectionNo: '5', itemNo: '5.1', question: 'Are all applicable TDS sections covered?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-TDS-01', remarks: '', isCustom: false },
+  { id: 'c5.2', sectionNo: '5', itemNo: '5.2', question: 'Is TDS deducted and deposited timely?', answerType: 'yes_no_na', answer: 'No', documentation: 'Obtained', location: 'WP-TDS-02', remarks: 'Late deposit on professional fees', isCustom: false },
+  { id: 'c5.3', sectionNo: '5', itemNo: '5.3', question: 'Are TDS certificates issued?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-TDS-03', remarks: '', isCustom: false },
+  { id: 'c5.4', sectionNo: '5', itemNo: '5.4', question: 'Are TDS returns filed?', answerType: 'yes_no_na', answer: 'Yes', documentation: 'Obtained', location: 'WP-TDS-04', remarks: '', isCustom: false },
+]
+
 // ─── Shared atoms ───────────────────────────────────────────────────────────
 function Badge({ label, color = G.border, text = G.secondary }: { label: string; color?: string; text?: string }) {
   return (
@@ -220,7 +250,6 @@ function SectionCard({ id, label, icon: Icon, stage, expanded, onToggle, childre
   return (
     <div id={`stage-${id}`} className="rounded-2xl overflow-hidden transition-all"
       style={{ background: G.white, border: `1px solid ${expanded ? G.accent + '55' : G.border}`, boxShadow: expanded ? '0 4px 16px rgba(5,132,199,0.08)' : '0 1px 3px rgba(15,23,42,0.06)' }}>
-      {/* Collapsed header */}
       <button className="w-full flex items-center gap-3 px-5 py-3.5 text-left" onClick={onToggle}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
           style={{ background: stage.done ? '#F0FDF4' : stage.pct > 0 ? '#EFF8FF' : G.canvas, border: `1px solid ${statusColor}33` }}>
@@ -241,7 +270,6 @@ function SectionCard({ id, label, icon: Icon, stage, expanded, onToggle, childre
                     : <ChevronDown className="h-3 w-3" style={{ color: G.secondary }} />}
         </div>
       </button>
-      {/* Expanded body */}
       {expanded && (
         <div className="border-t px-5 py-4" style={{ borderColor: G.border }}>
           {children}
@@ -276,22 +304,23 @@ function FieldRow({ label, value }: { label: string; value: string }) {
 }
 
 // ─── Workflow stages config ─────────────────────────────────────────────────
-const STAGES = [
-  { id: 'planning',         label: 'Planning',          icon: ClipboardList  },
-  { id: 'questionnaires',   label: 'Questionnaires',    icon: MessageSquare  },
-  { id: 'doc_requests',     label: 'Documents',         icon: Folder         },
-  { id: 'risk_assessment',  label: 'Risk Assessment',   icon: Shield         },
-  { id: 'gst_verification', label: 'GST Verification',  icon: CheckSquare    },
-  { id: 'tds_verification', label: 'TDS Verification',  icon: FileCheck      },
-  { id: 'caro',             label: 'CARO / Form 3CD',   icon: BarChart2      },
-  { id: 'working_papers',   label: 'Working Papers',    icon: FileText       },
-  { id: 'observations',     label: 'Observations',      icon: AlertCircle    },
-  { id: 'mgmt_responses',   label: 'Mgmt Responses',    icon: MessageSquare  },
-  { id: 'review',           label: 'Review',            icon: Eye            },
-  { id: 'signoff',          label: 'Sign-Off',          icon: PenLine        },
-] as const
+const STATUTORY_STAGES = [
+  { id: 'preliminary',    label: 'Preliminary Audit',     icon: ClipboardList },
+  { id: 'caro',           label: 'CARO 2020',             icon: BarChart2     },
+  { id: 'reconciliation', label: 'Reconciliation',        icon: RefreshCw     },
+  { id: 'documentation',  label: 'Docs & Working Papers', icon: FileText      },
+  { id: 'checklist',      label: 'Audit Checklist',       icon: CheckSquare   },
+  { id: 'observations',   label: 'Observations',          icon: AlertCircle   },
+  { id: 'review',         label: 'Review',                icon: Eye           },
+  { id: 'signoff',        label: 'Sign-Off',              icon: PenLine       },
+]
 
-type StageId = typeof STAGES[number]['id']
+const TAX_AUDIT_STAGES = [
+  { id: 'tax_forms',     label: 'Tax Audit Forms',       icon: FileCheck },
+  { id: 'documentation', label: 'Docs & Working Papers', icon: FileText  },
+]
+
+type StageId = string
 
 // ─── Stage content renderers ────────────────────────────────────────────────
 
@@ -660,11 +689,10 @@ function CAROContent({ auditType }: { auditType: string }) {
   const [expanded, setExpanded] = useState<number | null>(null)
   const statusColor: Record<string, string> = { complete: '#10B981', in_progress: G.accent, pending: '#F59E0B', not_applicable: G.muted }
   const statusLabel: Record<string, string> = { complete: 'Complete', in_progress: 'In Progress', pending: 'Pending', not_applicable: 'N/A' }
-  const isTaxAudit = auditType === 'Tax Audit'
+  const isTaxAudit = auditType === 'Tax Audit' || auditType === 'Tax Audit (u/s 44AB)'
   const clauses = isTaxAudit ? FORM_3CD_CLAUSES : CARO_CLAUSES
   return (
     <div className="space-y-2">
-      {/* Header badge */}
       <div className="flex items-center gap-2 mb-3 px-1">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
           style={{ background: isTaxAudit ? '#EFF8FF' : '#F0FDF4', border: `1px solid ${isTaxAudit ? G.accent + '44' : '#10B98144'}` }}>
@@ -686,7 +714,7 @@ function CAROContent({ auditType }: { auditType: string }) {
             <span className="text-[10px] font-mono font-bold" style={{ color: G.muted }}>{c.no}</span>
             <p className="flex-1 text-sm font-medium" style={{ color: G.primary }}>{c.title}</p>
             <div className="flex items-center gap-2 shrink-0">
-              <SevBadge sev={c.risk as any} />
+              <SevBadge sev={c.risk as string} />
               <Badge label={statusLabel[c.status]} color={statusColor[c.status]} text={statusColor[c.status]} />
               {c.evidence > 0 && <span className="text-[10px]" style={{ color: G.muted }}>{c.evidence} evidence</span>}
               {c.observations > 0 && <span className="text-[10px]" style={{ color: '#EF4444' }}>{c.observations} obs</span>}
@@ -921,6 +949,483 @@ function SignOffContent() {
   )
 }
 
+// ─── New composite stage components ─────────────────────────────────────────
+
+function PreliminaryContent({ eng, showMgmtResponse }: { eng: typeof ENGAGEMENTS[0]; showMgmtResponse: boolean }) {
+  const tabs = showMgmtResponse
+    ? ['Planning', 'Risk Assessment', 'Questionnaires', 'Management Response']
+    : ['Planning', 'Risk Assessment', 'Questionnaires']
+  const [sub, setSub] = useState('Planning')
+
+  return (
+    <>
+      <InnerTabs tabs={tabs} active={sub} onChange={setSub} />
+      {sub === 'Planning'           && <PlanningContent eng={eng} />}
+      {sub === 'Risk Assessment'    && <RiskContent />}
+      {sub === 'Questionnaires'     && <QuestionnaireContent />}
+      {sub === 'Management Response' && <MgmtResponsesContent />}
+    </>
+  )
+}
+
+function CAROWithApplicabilityContent({ auditType }: { auditType: string }) {
+  const [caroApplicable, setCaroApplicable] = useState(true)
+  const [caroReason, setCaroReason] = useState('Company type (Private Ltd / Public Ltd / LLP)')
+
+  const reasons = [
+    'Company type (Private Ltd / Public Ltd / LLP)',
+    'Turnover > ₹10 Crore',
+    'Not applicable — exempted',
+  ]
+
+  return (
+    <div className="space-y-4">
+      {/* Applicability banner */}
+      <div className="flex items-center gap-4 p-3 rounded-xl" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
+        <div className="flex items-center gap-2 flex-1">
+          <span className="text-xs font-semibold" style={{ color: G.primary }}>CARO 2020 Applicable?</span>
+          <button
+            onClick={() => setCaroApplicable(v => !v)}
+            className="relative flex-none"
+            style={{ width: 36, height: 20 }}
+            title={caroApplicable ? 'Click to mark as Not Applicable' : 'Click to mark as Applicable'}
+          >
+            <div className="absolute inset-0 rounded-full transition-colors" style={{ background: caroApplicable ? G.accent : G.border }} />
+            <div className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all"
+              style={{ left: caroApplicable ? '18px' : '2px' }} />
+          </button>
+          <span className="text-xs font-semibold" style={{ color: caroApplicable ? G.accent : G.muted }}>
+            {caroApplicable ? 'Yes' : 'No'}
+          </span>
+        </div>
+        {!caroApplicable && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{ color: G.secondary }}>Reason:</span>
+            <select
+              value={caroReason}
+              onChange={e => setCaroReason(e.target.value)}
+              className="rounded-lg px-2 py-1 text-xs focus:outline-none"
+              style={{ border: `1px solid ${G.border}`, background: G.white, color: G.primary }}
+            >
+              {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {!caroApplicable ? (
+        <div className="flex items-center gap-3 p-4 rounded-xl" style={{ background: '#F1F5F9', border: `1px solid ${G.border}` }}>
+          <AlertCircle className="h-5 w-5 shrink-0" style={{ color: G.muted }} />
+          <p className="text-sm" style={{ color: G.secondary }}>CARO 2020 not applicable for this engagement — {caroReason}</p>
+        </div>
+      ) : (
+        <CAROContent auditType={auditType} />
+      )}
+    </div>
+  )
+}
+
+function ReconciliationContent() {
+  const [sub, setSub] = useState('GST')
+  return (
+    <>
+      <InnerTabs tabs={['GST', 'TDS']} active={sub} onChange={setSub} />
+      {sub === 'GST' && <GSTVerifContent />}
+      {sub === 'TDS' && <TDSVerifContent />}
+    </>
+  )
+}
+
+function DocumentationContent() {
+  const [sub, setSub] = useState('Documents')
+  return (
+    <>
+      <InnerTabs tabs={['Documents', 'Working Papers']} active={sub} onChange={setSub} />
+      {sub === 'Documents'      && <DocRequestsContent />}
+      {sub === 'Working Papers' && <WorkingPapersContent />}
+    </>
+  )
+}
+
+// ─── Audit Checklist ─────────────────────────────────────────────────────────
+
+function AuditChecklistContent() {
+  const [items, setItems] = useState<ChecklistItem[]>(INITIAL_CHECKLIST)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [customQ, setCustomQ] = useState('')
+  const [customType, setCustomType] = useState<'yes_no_na' | 'text' | 'tabular'>('yes_no_na')
+  const [customSection, setCustomSection] = useState('1')
+
+  function updateItem(id: string, field: keyof ChecklistItem, value: string) {
+    setItems(prev => prev.map(it => it.id === id ? { ...it, [field]: value } : it))
+  }
+
+  function addCustomItem() {
+    if (!customQ.trim()) return
+    const sec = CHECKLIST_SECTIONS.find(s => s.no === customSection)!
+    const sectionItems = items.filter(i => i.sectionNo === customSection)
+    const lastNo = sectionItems.length > 0 ? sectionItems[sectionItems.length - 1].itemNo : `${customSection}.0`
+    const nextNum = parseFloat(lastNo.split('.')[1] ?? '0') + 1
+    const newItem: ChecklistItem = {
+      id: `c${customSection}.${nextNum}`,
+      sectionNo: customSection,
+      itemNo: `${customSection}.${nextNum}`,
+      question: customQ.trim(),
+      answerType: customType,
+      answer: '', documentation: '', location: '', remarks: '',
+      isCustom: true,
+    }
+    setItems(prev => [...prev, newItem])
+    setCustomQ('')
+    setShowAddForm(false)
+    toast.success(`Custom item added to Section ${customSection} — ${sec.name}`)
+  }
+
+  const thStyle: React.CSSProperties = {
+    padding: '8px 10px', border: `1px solid ${G.border}`,
+    textAlign: 'left', fontWeight: 600, fontSize: 11, color: G.secondary,
+    background: G.canvas, whiteSpace: 'nowrap',
+  }
+  const tdStyle: React.CSSProperties = {
+    padding: '8px 10px', border: `1px solid ${G.border}`,
+    color: G.primary, verticalAlign: 'middle', fontSize: 12,
+  }
+  const selectStyle: React.CSSProperties = {
+    appearance: 'none', padding: '4px 6px', borderRadius: 6,
+    border: `1px solid ${G.border}`, background: G.white, fontSize: 11,
+    color: G.primary, width: '100%', cursor: 'pointer',
+  }
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '4px 6px', borderRadius: 6,
+    border: `1px solid ${G.border}`, background: G.white,
+    fontSize: 11, color: G.primary, outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: 46 }}>#</th>
+              <th style={thStyle}>Checklist Item</th>
+              <th style={{ ...thStyle, width: 90 }}>Answer</th>
+              <th style={{ ...thStyle, width: 130 }}>Documentation</th>
+              <th style={{ ...thStyle, width: 110 }}>Location</th>
+              <th style={{ ...thStyle, width: 160 }}>Remarks / If any</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CHECKLIST_SECTIONS.map(section => (
+              <>
+                <tr key={`sec-${section.no}`}>
+                  <td colSpan={6} style={{ ...tdStyle, background: '#F1F5F9', fontWeight: 700, color: G.primary, fontSize: 11 }}>
+                    {section.no} — {section.name}
+                  </td>
+                </tr>
+                {items.filter(it => it.sectionNo === section.no).map(it => (
+                  <tr key={it.id} style={{ background: it.isCustom ? '#FAFEFF' : G.white }}>
+                    <td style={{ ...tdStyle, color: G.muted, fontSize: 11 }}>{it.itemNo}</td>
+                    <td style={{ ...tdStyle, maxWidth: 340 }}>
+                      <span style={{ color: G.primary }}>{it.question}</span>
+                      {it.isCustom && <Badge label="Custom" color={G.accent} text={G.accent} />}
+                    </td>
+                    <td style={tdStyle}>
+                      {it.answerType === 'yes_no_na' ? (
+                        <select value={it.answer} onChange={e => updateItem(it.id, 'answer', e.target.value)} style={selectStyle}>
+                          <option value="">—</option>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                          <option value="N/A">N/A</option>
+                        </select>
+                      ) : (
+                        <input value={it.answer} onChange={e => updateItem(it.id, 'answer', e.target.value)} style={inputStyle} placeholder="Enter…" />
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      <select value={it.documentation} onChange={e => updateItem(it.id, 'documentation', e.target.value)} style={selectStyle}>
+                        <option value="">—</option>
+                        <option value="Obtained">Obtained</option>
+                        <option value="Not Required">Not Required</option>
+                        <option value="Pending">Pending</option>
+                        <option value="N/A">N/A</option>
+                      </select>
+                    </td>
+                    <td style={tdStyle}>
+                      <input value={it.location} onChange={e => updateItem(it.id, 'location', e.target.value)} style={inputStyle} placeholder="WP ref…" />
+                    </td>
+                    <td style={tdStyle}>
+                      <input value={it.remarks} onChange={e => updateItem(it.id, 'remarks', e.target.value)} style={inputStyle} placeholder="Notes…" />
+                    </td>
+                  </tr>
+                ))}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Add custom item */}
+      <div className="mt-4">
+        {!showAddForm ? (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
+            style={{ background: G.white, border: `1px dashed ${G.border}`, color: G.secondary }}
+          >
+            <Plus className="h-3.5 w-3.5" />+ Add Custom Item
+          </button>
+        ) : (
+          <div className="p-4 rounded-xl space-y-3" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
+            <p className="text-xs font-bold" style={{ color: G.primary }}>Add Custom Checklist Item</p>
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>Question</label>
+                <input
+                  value={customQ}
+                  onChange={e => setCustomQ(e.target.value)}
+                  placeholder="Enter checklist question…"
+                  className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                  style={{ border: `1px solid ${G.border}`, background: G.white, color: G.primary }}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>Answer Type</label>
+                  <select
+                    value={customType}
+                    onChange={e => setCustomType(e.target.value as 'yes_no_na' | 'text' | 'tabular')}
+                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ border: `1px solid ${G.border}`, background: G.white, color: G.primary }}
+                  >
+                    <option value="yes_no_na">Yes / No / N/A</option>
+                    <option value="text">Fill the Blank</option>
+                    <option value="tabular">Tabular Data</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: G.muted }}>Section</label>
+                  <select
+                    value={customSection}
+                    onChange={e => setCustomSection(e.target.value)}
+                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ border: `1px solid ${G.border}`, background: G.white, color: G.primary }}
+                  >
+                    {CHECKLIST_SECTIONS.map(s => (
+                      <option key={s.no} value={s.no}>{s.no} — {s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={addCustomItem}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white"
+                style={{ background: G.accent }}
+              >
+                Add Item
+              </button>
+              <button
+                onClick={() => { setShowAddForm(false); setCustomQ('') }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold"
+                style={{ background: G.white, border: `1px solid ${G.border}`, color: G.secondary }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Tax Audit Forms ──────────────────────────────────────────────────────────
+
+type TaxFormItem = { id: string; no: string; question: string; answer: string; documentation: string; location: string; remarks: string }
+
+const FORM_3CA_BASE: TaxFormItem[] = [
+  { id: '3ca_1', no: '1', question: 'Is the entity required to get accounts audited under any law other than Income Tax Act?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CA-01', remarks: '' },
+  { id: '3ca_2', no: '2', question: 'Has the audit been conducted and signed by a qualified CA?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CA-02', remarks: '' },
+  { id: '3ca_3', no: '3', question: 'Does the report comply with the format prescribed under Rule 6G?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CA-03', remarks: '' },
+  { id: '3ca_4', no: '4', question: 'Is Form 3CD attached along with Form 3CA?', answer: '', documentation: 'Pending', location: '', remarks: 'Awaiting 3CD completion' },
+  { id: '3ca_5', no: '5', question: 'Are all disclosures complete and accurate?', answer: '', documentation: 'Pending', location: '', remarks: '' },
+]
+
+const FORM_3CB_BASE: TaxFormItem[] = [
+  { id: '3cb_1', no: '1', question: 'Is the entity NOT required to get accounts audited under any other law?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CB-01', remarks: '' },
+  { id: '3cb_2', no: '2', question: 'Has the CA conducted independent audit procedures?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CB-02', remarks: '' },
+  { id: '3cb_3', no: '3', question: 'Are financial statements prepared as per applicable accounting standards?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CB-03', remarks: '' },
+  { id: '3cb_4', no: '4', question: 'Is the audit conducted for the full period of the previous year?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CB-04', remarks: '' },
+  { id: '3cb_5', no: '5', question: 'Are all significant accounting policies disclosed?', answer: '', documentation: 'Pending', location: '', remarks: '' },
+]
+
+const FORM_3CE_BASE: TaxFormItem[] = [
+  { id: '3ce_1', no: '1', question: 'Is the assessee a non-resident receiving royalties/fees for technical services?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CE-01', remarks: '' },
+  { id: '3ce_2', no: '2', question: 'Is the income taxable under section 44DA?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CE-02', remarks: '' },
+  { id: '3ce_3', no: '3', question: 'Are the agreements/contracts documented?', answer: 'Yes', documentation: 'Obtained', location: 'WP-3CE-03', remarks: '' },
+  { id: '3ce_4', no: '4', question: 'Has the income been correctly computed as per applicable provisions?', answer: '', documentation: 'Pending', location: '', remarks: '' },
+]
+
+function statusToAnswer(status: string): string {
+  if (status === 'complete') return 'Yes'
+  if (status === 'not_applicable') return 'N/A'
+  return ''
+}
+
+function TaxAuditFormsContent() {
+  const [activeForm, setActiveForm] = useState<'3CA' | '3CB' | '3CD' | '3CE'>('3CA')
+
+  const form3cdBase: TaxFormItem[] = FORM_3CD_CLAUSES.map(c => ({
+    id: `3cd_${c.id}`,
+    no: c.no,
+    question: c.title,
+    answer: statusToAnswer(c.status),
+    documentation: c.evidence > 0 ? 'Obtained' : (c.status === 'not_applicable' ? 'N/A' : 'Pending'),
+    location: c.evidence > 0 ? `WP-3CD-${c.id.toString().padStart(2, '0')}` : '',
+    remarks: c.observations > 0 ? `${c.observations} observation(s)` : '',
+  }))
+
+  const [items3ca, setItems3ca] = useState<TaxFormItem[]>(FORM_3CA_BASE)
+  const [items3cb, setItems3cb] = useState<TaxFormItem[]>(FORM_3CB_BASE)
+  const [items3cd, setItems3cd] = useState<TaxFormItem[]>(form3cdBase)
+  const [items3ce, setItems3ce] = useState<TaxFormItem[]>(FORM_3CE_BASE)
+
+  const currentItems = activeForm === '3CA' ? items3ca : activeForm === '3CB' ? items3cb : activeForm === '3CD' ? items3cd : items3ce
+  const setCurrentItems = activeForm === '3CA' ? setItems3ca : activeForm === '3CB' ? setItems3cb : activeForm === '3CD' ? setItems3cd : setItems3ce
+
+  function updateItem(id: string, field: keyof TaxFormItem, value: string) {
+    setCurrentItems((prev: TaxFormItem[]) => prev.map(it => it.id === id ? { ...it, [field]: value } : it))
+  }
+
+  const FORMS: Array<{ id: '3CA' | '3CB' | '3CD' | '3CE'; label: string; desc: string }> = [
+    { id: '3CA', label: 'Form 3CA', desc: 'Audit report u/s 44AB — accounts audited under other law' },
+    { id: '3CB', label: 'Form 3CB', desc: 'Audit report u/s 44AB — accounts not audited under other law' },
+    { id: '3CD', label: 'Form 3CD', desc: 'Statement of particulars required to be furnished' },
+    { id: '3CE', label: 'Form 3CE', desc: 'Audit report u/s 44DA (royalties/fees from foreign companies)' },
+  ]
+
+  const thStyle: React.CSSProperties = {
+    padding: '8px 10px', border: `1px solid ${G.border}`,
+    textAlign: 'left', fontWeight: 600, fontSize: 11, color: G.secondary,
+    background: G.canvas, whiteSpace: 'nowrap',
+  }
+  const tdStyle: React.CSSProperties = {
+    padding: '8px 10px', border: `1px solid ${G.border}`,
+    color: G.primary, verticalAlign: 'middle', fontSize: 12,
+  }
+  const selectStyle: React.CSSProperties = {
+    appearance: 'none', padding: '4px 6px', borderRadius: 6,
+    border: `1px solid ${G.border}`, background: G.white, fontSize: 11,
+    color: G.primary, width: '100%', cursor: 'pointer',
+  }
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '4px 6px', borderRadius: 6,
+    border: `1px solid ${G.border}`, background: G.white,
+    fontSize: 11, color: G.primary, outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Form selector segmented control */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
+        {FORMS.map(f => (
+          <button
+            key={f.id}
+            onClick={() => setActiveForm(f.id)}
+            className="flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all text-left"
+            style={{
+              background: activeForm === f.id ? G.white : 'transparent',
+              color: activeForm === f.id ? G.primary : G.secondary,
+              boxShadow: activeForm === f.id ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
+              border: activeForm === f.id ? `1px solid ${G.border}` : '1px solid transparent',
+            }}
+          >
+            <p className="font-bold" style={{ color: activeForm === f.id ? G.accent : G.secondary }}>{f.label}</p>
+            <p className="text-[10px] leading-tight mt-0.5 hidden md:block" style={{ color: G.muted }}>{f.desc}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Action bar */}
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] flex-1" style={{ color: G.muted }}>
+          Form {activeForm} · Last saved: Jun 28, 2026
+        </span>
+        <button
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style={{ background: G.white, border: `1px solid ${G.border}`, color: G.secondary }}
+          onClick={() => toast.success('Draft saved')}
+        >
+          Save Draft
+        </button>
+        <button
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style={{ background: G.white, border: `1px solid ${G.accent}`, color: G.accent }}
+          onClick={() => toast.info('Submitted for review')}
+        >
+          Submit for Review
+        </button>
+        <button
+          className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
+          style={{ background: G.accent }}
+          onClick={() => toast.success('Filed successfully')}
+        >
+          File
+        </button>
+      </div>
+
+      {/* Checklist table */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, width: 80 }}>#</th>
+              <th style={thStyle}>Item</th>
+              <th style={{ ...thStyle, width: 90 }}>Answer</th>
+              <th style={{ ...thStyle, width: 130 }}>Documentation</th>
+              <th style={{ ...thStyle, width: 110 }}>Location</th>
+              <th style={{ ...thStyle, width: 160 }}>Remarks / If any</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentItems.map(it => (
+              <tr key={it.id} style={{ background: G.white }}>
+                <td style={{ ...tdStyle, color: G.muted, fontSize: 11 }}>{it.no}</td>
+                <td style={{ ...tdStyle, maxWidth: 340 }}>{it.question}</td>
+                <td style={tdStyle}>
+                  <select value={it.answer} onChange={e => updateItem(it.id, 'answer', e.target.value)} style={selectStyle}>
+                    <option value="">—</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                    <option value="N/A">N/A</option>
+                  </select>
+                </td>
+                <td style={tdStyle}>
+                  <select value={it.documentation} onChange={e => updateItem(it.id, 'documentation', e.target.value)} style={selectStyle}>
+                    <option value="">—</option>
+                    <option value="Obtained">Obtained</option>
+                    <option value="Not Required">Not Required</option>
+                    <option value="Pending">Pending</option>
+                    <option value="N/A">N/A</option>
+                  </select>
+                </td>
+                <td style={tdStyle}>
+                  <input value={it.location} onChange={e => updateItem(it.id, 'location', e.target.value)} style={inputStyle} placeholder="WP ref…" />
+                </td>
+                <td style={tdStyle}>
+                  <input value={it.remarks} onChange={e => updateItem(it.id, 'remarks', e.target.value)} style={inputStyle} placeholder="Notes…" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ─── Right Panel ─────────────────────────────────────────────────────────────
 function RightPanel({ eng, stageStatus }: { eng: typeof ENGAGEMENTS[0]; stageStatus: typeof STAGE_STATUS[1] }) {
   const openObs = OBS_LIST.filter(o => o.status === 'open').length
@@ -1044,10 +1549,213 @@ const AUDIT_TYPES = [
   'Special Purpose Audit',
 ]
 
+const AUDIT_TYPE_META: Record<string, { icon: typeof FileCheck; desc: string; color: string }> = {
+  'Statutory Audit': {
+    icon: FileCheck,
+    desc: 'Annual statutory audit under Companies Act with CARO compliance',
+    color: '#0584C7',
+  },
+  'Tax Audit (u/s 44AB)': {
+    icon: FileText,
+    desc: 'Tax audit report u/s 44AB — Forms 3CA, 3CB, 3CD & 3CE',
+    color: '#8B5CF6',
+  },
+  'Internal Audit': {
+    icon: Shield,
+    desc: 'Internal controls review and operational risk assessment',
+    color: '#10B981',
+  },
+  'Stock Audit': {
+    icon: BarChart2,
+    desc: 'Physical stock verification and inventory valuation audit',
+    color: '#F59E0B',
+  },
+  'GST Audit': {
+    icon: RefreshCw,
+    desc: 'GST compliance audit — returns, ITC reconciliation & filings',
+    color: '#0EA5E9',
+  },
+  'Transfer Pricing Audit': {
+    icon: TrendingUp,
+    desc: 'Related-party transactions and arm\'s-length pricing review',
+    color: '#EC4899',
+  },
+  'Concurrent Audit': {
+    icon: Activity,
+    desc: 'Continuous audit during the financial year for banks & PSUs',
+    color: '#6366F1',
+  },
+  'Special Purpose Audit': {
+    icon: Star,
+    desc: 'Custom-scope audit for specific regulatory or lender requirements',
+    color: '#64748B',
+  },
+}
+
+function countEngagementsForType(type: string) {
+  return ENGAGEMENTS.filter(e =>
+    e.type === type ||
+    (type === 'Tax Audit (u/s 44AB)' && e.type === 'Tax Audit')
+  ).length
+}
+
+function AuditTypeSelection({
+  visibleTypes,
+  onSelect,
+  onToggleVisibility,
+  onShowAll,
+  showSettings,
+  setShowSettings,
+}: {
+  visibleTypes: Set<string>
+  onSelect: (type: string) => void
+  onToggleVisibility: (type: string) => void
+  onShowAll: () => void
+  showSettings: boolean
+  setShowSettings: (v: boolean | ((prev: boolean) => boolean)) => void
+}) {
+  const visibleList = AUDIT_TYPES.filter(t => visibleTypes.has(t))
+
+  return (
+    <>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: G.primary }}>Audit</h1>
+          <p className="text-sm mt-0.5" style={{ color: G.secondary }}>
+            Select an audit type to open engagements and workflow stages
+          </p>
+        </div>
+
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setShowSettings(v => !v)}
+            title="Customize visible audit types"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all"
+            style={{
+              background: showSettings ? G.accent + '15' : G.white,
+              border: `1px solid ${showSettings ? G.accent : G.border}`,
+              color: showSettings ? G.accent : G.secondary,
+            }}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            <span className="text-xs font-semibold">Customize</span>
+          </button>
+
+          {showSettings && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowSettings(false)} />
+              <div
+                className="absolute right-0 top-full mt-2 z-50 rounded-2xl shadow-xl"
+                style={{ background: G.white, border: `1px solid ${G.border}`, width: 300 }}
+              >
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${G.border}` }}>
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: G.primary }}>Customize Audit Types</p>
+                    <p className="text-[10px]" style={{ color: G.muted }}>Choose which types appear on this page</p>
+                  </div>
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg"
+                    style={{ background: G.canvas, color: G.muted }}>
+                    <XCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <div className="p-2 max-h-72 overflow-y-auto">
+                  {AUDIT_TYPES.map(t => {
+                    const isOn = visibleTypes.has(t)
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => onToggleVisibility(t)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all"
+                        style={{ background: isOn ? G.accent + '08' : 'transparent' }}
+                      >
+                        <FileCheck className="h-3.5 w-3.5 shrink-0" style={{ color: isOn ? G.accent : G.muted }} />
+                        <span className="flex-1 text-xs font-medium text-left" style={{ color: isOn ? G.primary : G.muted }}>{t}</span>
+                        <div className="relative h-4 w-7 rounded-full shrink-0"
+                          style={{ background: isOn ? G.accent : G.border }}>
+                          <div className="absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-all"
+                            style={{ left: isOn ? '14px' : '2px' }} />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: `1px solid ${G.border}` }}>
+                  <button
+                    onClick={onShowAll}
+                    className="text-[11px] font-semibold"
+                    style={{ color: G.accent }}>
+                    Show All
+                  </button>
+                  <span className="text-[10px]" style={{ color: G.muted }}>
+                    {visibleTypes.size} of {AUDIT_TYPES.length} shown
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {visibleList.map(t => {
+          const meta = AUDIT_TYPE_META[t]
+          const Icon = meta.icon
+          const count = countEngagementsForType(t)
+          return (
+            <button
+              key={t}
+              onClick={() => onSelect(t)}
+              className="rounded-2xl p-5 text-left transition-all group"
+              style={{
+                background: G.white,
+                border: `1px solid ${G.border}`,
+                boxShadow: '0 1px 3px 0 rgba(15,23,42,0.06)',
+              }}
+              onMouseEnter={e => {
+                ;(e.currentTarget as HTMLElement).style.borderColor = meta.color + '66'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px 0 rgba(15,23,42,0.10)'
+              }}
+              onMouseLeave={e => {
+                ;(e.currentTarget as HTMLElement).style.borderColor = G.border
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px 0 rgba(15,23,42,0.06)'
+              }}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ background: meta.color + '14', border: `1px solid ${meta.color}33` }}
+                >
+                  <Icon className="h-5 w-5" style={{ color: meta.color }} />
+                </div>
+                <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: G.muted }} />
+              </div>
+              <p className="text-2xl font-bold leading-none mb-1.5 tabular-nums" style={{ color: G.primary }}>
+                {count}
+              </p>
+              <p className="text-sm font-bold mb-1" style={{ color: G.primary }}>{t}</p>
+              <p className="text-[11px] leading-snug" style={{ color: G.secondary }}>{meta.desc}</p>
+              <p className="text-[10px] mt-2 font-semibold" style={{ color: G.muted }}>
+                {count === 1 ? '1 active engagement' : `${count} active engagements`}
+              </p>
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export function AuditPage() {
+  const [hasSelectedType, setHasSelectedType] = useState(false)
+  const [visibleAuditTypes, setVisibleAuditTypes] = useState<Set<string>>(() => new Set(AUDIT_TYPES))
+  const [showTypeSettings, setShowTypeSettings] = useState(false)
   const [selectedId, setSelectedId] = useState(1)
-  const [activeStage, setActiveStage] = useState<StageId>('planning')
+  const [activeStage, setActiveStage] = useState<StageId>('preliminary')
   const [showEngSearch, setShowEngSearch] = useState(false)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [auditType, setAuditType] = useState(ENGAGEMENTS[0].type)
@@ -1055,20 +1763,50 @@ export function AuditPage() {
   const [periodFrom, setPeriodFrom] = useState('2025-04')
   const [periodTo, setPeriodTo] = useState('2026-03')
   const [showTabSettings, setShowTabSettings] = useState(false)
-  const [visibleStages, setVisibleStages] = useState<Set<StageId>>(
-    new Set(STAGES.map(s => s.id as StageId))
+  const [visibleStages, setVisibleStages] = useState<Set<string>>(
+    new Set(STATUTORY_STAGES.map(s => s.id))
   )
 
-  function toggleStageVisibility(id: StageId) {
+  const isTaxAudit = auditType === 'Tax Audit' || auditType === 'Tax Audit (u/s 44AB)'
+  const STAGES = isTaxAudit ? TAX_AUDIT_STAGES : STATUTORY_STAGES
+
+  function toggleAuditTypeVisibility(t: string) {
+    setVisibleAuditTypes(prev => {
+      const next = new Set(prev)
+      if (next.has(t)) { if (next.size > 1) next.delete(t) } else next.add(t)
+      return next
+    })
+  }
+
+  function selectAuditType(t: string) {
+    setAuditType(t)
+    const matching = ENGAGEMENTS.find(e => e.type === t || (t === 'Tax Audit (u/s 44AB)' && e.type === 'Tax Audit'))
+    if (matching) setSelectedId(matching.id)
+    const tIsTax = t === 'Tax Audit' || t === 'Tax Audit (u/s 44AB)'
+    const newStages = tIsTax ? TAX_AUDIT_STAGES : STATUTORY_STAGES
+    setActiveStage(newStages[0].id)
+    setVisibleStages(new Set(newStages.map(s => s.id)))
+    setHasSelectedType(true)
+    setShowTypeSettings(false)
+    setShowEngSearch(false)
+  }
+
+  function backToAuditTypes() {
+    setHasSelectedType(false)
+    setShowTypeSettings(false)
+    setShowEngSearch(false)
+    setShowTypeDropdown(false)
+  }
+
+  function toggleStageVisibility(id: string) {
     setVisibleStages(prev => {
       const next = new Set(prev)
       if (next.has(id)) {
-        if (next.size === 1) return prev // keep at least one
+        if (next.size === 1) return prev
         next.delete(id)
-        // if active tab is hidden, switch to first visible
         if (activeStage === id) {
-          const first = STAGES.find(s => next.has(s.id as StageId))
-          if (first) setActiveStage(first.id as StageId)
+          const first = STAGES.find(s => next.has(s.id))
+          if (first) setActiveStage(first.id)
         }
       } else {
         next.add(id)
@@ -1080,14 +1818,58 @@ export function AuditPage() {
   const eng = ENGAGEMENTS.find(e => e.id === selectedId) ?? ENGAGEMENTS[0]
   const stageStatus = STAGE_STATUS[selectedId] ?? STAGE_STATUS[1]
 
-  // Resolve whether this is a Tax Audit for CARO/Form3CD switching
-  const isTaxAudit = auditType === 'Tax Audit' || auditType === 'Tax Audit (u/s 44AB)'
   const statusColors: Record<string, string> = {
     'In Progress': G.accent, 'Planning': '#F59E0B', 'Review': '#8B5CF6', 'Completed': '#10B981',
   }
 
-  return (
+return (
     <div className="p-3 md:p-4 max-w-[1600px] mx-auto" style={{ background: G.canvas }}>
+
+      {!hasSelectedType ? (
+        <AuditTypeSelection
+          visibleTypes={visibleAuditTypes}
+          onSelect={selectAuditType}
+          onToggleVisibility={toggleAuditTypeVisibility}
+          onShowAll={() => setVisibleAuditTypes(new Set(AUDIT_TYPES))}
+          showSettings={showTypeSettings}
+          setShowSettings={setShowTypeSettings}
+        />
+      ) : (
+        <>
+      {/* ── Back + selected audit type ─────────────────────────────────────── */}
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          onClick={backToAuditTypes}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+          style={{ background: G.white, border: `1px solid ${G.border}`, color: G.secondary }}
+          onMouseEnter={e => {
+            ;(e.currentTarget as HTMLElement).style.borderColor = G.accent
+            ;(e.currentTarget as HTMLElement).style.color = G.accent
+          }}
+          onMouseLeave={e => {
+            ;(e.currentTarget as HTMLElement).style.borderColor = G.border
+            ;(e.currentTarget as HTMLElement).style.color = G.secondary
+          }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          All Audit Types
+        </button>
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-xl"
+          style={{ background: G.white, border: `1px solid ${G.border}` }}
+        >
+          {(() => {
+            const meta = AUDIT_TYPE_META[auditType] ?? AUDIT_TYPE_META['Statutory Audit']
+            const Icon = meta.icon
+            return (
+              <>
+                <Icon className="h-3.5 w-3.5" style={{ color: meta.color }} />
+                <span className="text-sm font-bold" style={{ color: G.primary }}>{auditType}</span>
+              </>
+            )
+          })()}
+        </div>
+      </div>
 
       {/* ── Engagement Header ──────────────────────────────────────────────── */}
       <div className="rounded-2xl mb-3 p-5" style={{ background: G.white, border: `1px solid ${G.border}`, boxShadow: '0 1px 4px rgba(15,23,42,0.07)' }}>
@@ -1110,16 +1892,26 @@ export function AuditPage() {
               {showEngSearch && (
                 <div className="absolute top-full mt-1 left-0 right-0 z-20 rounded-xl overflow-hidden shadow-xl"
                   style={{ background: G.white, border: `1px solid ${G.border}` }}>
-                  {ENGAGEMENTS.map(e => (
-                    <button key={e.id} className="w-full flex items-start gap-3 px-4 py-3 text-left hover:opacity-80 transition-opacity"
-                      style={{ borderBottom: `1px solid ${G.border}` }}
-                      onClick={() => { setSelectedId(e.id); setAuditType(e.type); setShowEngSearch(false); setActiveStage('planning') }}>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: G.primary }}>{e.client}</p>
-                        <p className="text-[10px]" style={{ color: G.secondary }}>{e.type} · {e.fy}</p>
-                      </div>
-                    </button>
-                  ))}
+                  {ENGAGEMENTS.map(e => {
+                    const engIsTax = e.type === 'Tax Audit' || e.type === 'Tax Audit (u/s 44AB)'
+                    const newStages = engIsTax ? TAX_AUDIT_STAGES : STATUTORY_STAGES
+                    return (
+                      <button key={e.id} className="w-full flex items-start gap-3 px-4 py-3 text-left hover:opacity-80 transition-opacity"
+                        style={{ borderBottom: `1px solid ${G.border}` }}
+                        onClick={() => {
+                          setSelectedId(e.id)
+                          setAuditType(e.type)
+                          setShowEngSearch(false)
+                          setActiveStage(newStages[0].id)
+                          setVisibleStages(new Set(newStages.map(s => s.id)))
+                        }}>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: G.primary }}>{e.client}</p>
+                          <p className="text-[10px]" style={{ color: G.secondary }}>{e.type} · {e.fy}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1141,23 +1933,32 @@ export function AuditPage() {
               {showTypeDropdown && (
                 <div className="absolute top-full mt-1 left-0 z-20 rounded-xl overflow-hidden shadow-xl min-w-[220px]"
                   style={{ background: G.white, border: `1px solid ${G.border}` }}>
-                  {AUDIT_TYPES.map(t => (
-                    <button key={t}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors"
-                      style={{
-                        borderBottom: `1px solid ${G.border}`,
-                        background: auditType === t ? G.accent + '10' : G.white,
-                        color: auditType === t ? G.accent : G.primary,
-                      }}
-                      onMouseEnter={e => { if (auditType !== t) (e.currentTarget as HTMLElement).style.background = G.canvas }}
-                      onMouseLeave={e => { if (auditType !== t) (e.currentTarget as HTMLElement).style.background = G.white }}
-                      onClick={() => { setAuditType(t); setShowTypeDropdown(false) }}
-                    >
-                      {auditType === t && <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: G.accent }} />}
-                      {auditType !== t && <Circle className="h-3.5 w-3.5 shrink-0" style={{ color: G.muted }} />}
-                      <span className="text-sm font-medium">{t}</span>
-                    </button>
-                  ))}
+                  {AUDIT_TYPES.map(t => {
+                    const tIsTax = t === 'Tax Audit' || t === 'Tax Audit (u/s 44AB)'
+                    const newStages = tIsTax ? TAX_AUDIT_STAGES : STATUTORY_STAGES
+                    return (
+                      <button key={t}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors"
+                        style={{
+                          borderBottom: `1px solid ${G.border}`,
+                          background: auditType === t ? G.accent + '10' : G.white,
+                          color: auditType === t ? G.accent : G.primary,
+                        }}
+                        onMouseEnter={e => { if (auditType !== t) (e.currentTarget as HTMLElement).style.background = G.canvas }}
+                        onMouseLeave={e => { if (auditType !== t) (e.currentTarget as HTMLElement).style.background = G.white }}
+                        onClick={() => {
+                          setAuditType(t)
+                          setActiveStage(newStages[0].id)
+                          setVisibleStages(new Set(newStages.map(s => s.id)))
+                          setShowTypeDropdown(false)
+                        }}
+                      >
+                        {auditType === t && <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: G.accent }} />}
+                        {auditType !== t && <Circle className="h-3.5 w-3.5 shrink-0" style={{ color: G.muted }} />}
+                        <span className="text-sm font-medium">{t}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1258,20 +2059,19 @@ export function AuditPage() {
 
           {/* Scrollable tabs */}
           <div className="flex items-end overflow-x-auto flex-1 px-3" style={{ gap: 2, minHeight: 48 }}>
-            {STAGES.filter(stage => visibleStages.has(stage.id as StageId)).map((stage) => {
+            {STAGES.filter(stage => visibleStages.has(stage.id)).map((stage) => {
               const s = stageStatus[stage.id]
               const isActive = activeStage === stage.id
               const isDone = s?.done
               const hasIssue = (s?.exceptions ?? 0) > 0
               const hasPending = (s?.pending ?? 0) > 0
               const SIcon = stage.icon
-              const label = stage.id === 'caro' ? (isTaxAudit ? 'Form 3CD' : 'CARO') : stage.label
               const dotColor = isDone ? '#10B981' : hasIssue ? '#EF4444' : hasPending ? '#F59E0B' : s && s.pct > 0 ? G.accent : 'transparent'
 
               return (
                 <button
                   key={stage.id}
-                  onClick={() => setActiveStage(stage.id as StageId)}
+                  onClick={() => setActiveStage(stage.id)}
                   className="relative flex items-center gap-1.5 px-4 shrink-0 transition-all focus:outline-none"
                   style={{
                     height: isActive ? 44 : 38,
@@ -1287,7 +2087,7 @@ export function AuditPage() {
                   }}
                 >
                   <SIcon className="h-3.5 w-3.5 shrink-0" style={{ color: isActive ? G.accent : G.muted }} />
-                  <span className="whitespace-nowrap">{label}</span>
+                  <span className="whitespace-nowrap">{stage.label}</span>
                   {dotColor !== 'transparent' && (
                     <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: dotColor }} />
                   )}
@@ -1296,7 +2096,7 @@ export function AuditPage() {
             })}
           </div>
 
-          {/* Gear button — outside scroll area so popover never gets clipped */}
+          {/* Gear button */}
           <div className="relative shrink-0 flex items-center px-3" style={{ borderLeft: `1px solid ${G.border}` }}>
             <button
               onClick={() => setShowTabSettings(v => !v)}
@@ -1318,7 +2118,6 @@ export function AuditPage() {
                 className="absolute right-0 top-full mt-2 z-50 rounded-2xl shadow-xl"
                 style={{ background: G.white, border: `1px solid ${G.border}`, width: 260 }}
               >
-                {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${G.border}` }}>
                   <div>
                     <p className="text-xs font-bold" style={{ color: G.primary }}>Customize Tabs</p>
@@ -1332,21 +2131,19 @@ export function AuditPage() {
                   </button>
                 </div>
 
-                {/* Stage toggles */}
                 <div className="p-2">
                   {STAGES.map(stage => {
-                    const isOn = visibleStages.has(stage.id as StageId)
+                    const isOn = visibleStages.has(stage.id)
                     const SIcon = stage.icon
-                    const label = stage.id === 'caro' ? (isTaxAudit ? 'Form 3CD' : 'CARO') : stage.label
                     return (
                       <button
                         key={stage.id}
-                        onClick={() => toggleStageVisibility(stage.id as StageId)}
+                        onClick={() => toggleStageVisibility(stage.id)}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all"
                         style={{ background: isOn ? G.accent + '08' : 'transparent' }}
                       >
                         <SIcon className="h-3.5 w-3.5 shrink-0" style={{ color: isOn ? G.accent : G.muted }} />
-                        <span className="flex-1 text-xs font-medium text-left" style={{ color: isOn ? G.primary : G.muted }}>{label}</span>
+                        <span className="flex-1 text-xs font-medium text-left" style={{ color: isOn ? G.primary : G.muted }}>{stage.label}</span>
                         <div className="relative h-4 w-7 rounded-full transition-all shrink-0"
                           style={{ background: isOn ? G.accent : G.border }}>
                           <div className="absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-all"
@@ -1357,10 +2154,9 @@ export function AuditPage() {
                   })}
                 </div>
 
-                {/* Footer */}
                 <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: `1px solid ${G.border}` }}>
                   <button
-                    onClick={() => setVisibleStages(new Set(STAGES.map(s => s.id as StageId)))}
+                    onClick={() => setVisibleStages(new Set(STAGES.map(s => s.id)))}
                     className="text-[11px] font-semibold"
                     style={{ color: G.accent }}>
                     Show All
@@ -1376,10 +2172,7 @@ export function AuditPage() {
         <div className="p-5" style={{ background: G.white }}>
           {(() => {
             const s = stageStatus[activeStage] ?? { pct: 0, pending: 0, exceptions: 0, done: false }
-            const stage = STAGES.find(st => st.id === activeStage)!
-            const stageLabel = activeStage === 'caro'
-              ? (isTaxAudit ? 'Form 3CD Verification' : 'CARO 2020 Verification')
-              : stage.label
+            const stage = STAGES.find(st => st.id === activeStage) ?? STAGES[0]
 
             return (
               <>
@@ -1390,7 +2183,7 @@ export function AuditPage() {
                     <stage.icon className="h-4 w-4" style={{ color: s.done ? '#10B981' : s.pct > 0 ? G.accent : G.muted }} />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-bold" style={{ color: G.primary }}>{stageLabel}</h3>
+                    <h3 className="text-sm font-bold" style={{ color: G.primary }}>{stage.label}</h3>
                     <div className="flex items-center gap-3 mt-0.5">
                       <Pct value={s.pct} />
                       {s.done && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#F0FDF4', color: '#10B981' }}>Complete</span>}
@@ -1400,13 +2193,13 @@ export function AuditPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {(() => {
-                      const visibleList = STAGES.filter(s => visibleStages.has(s.id as StageId))
-                      const idx = visibleList.findIndex(s => s.id === activeStage)
+                      const visibleList = STAGES.filter(st => visibleStages.has(st.id))
+                      const idx = visibleList.findIndex(st => st.id === activeStage)
                       return (
                         <>
                           {idx > 0 && (
                             <button
-                              onClick={() => setActiveStage(visibleList[idx - 1].id as StageId)}
+                              onClick={() => setActiveStage(visibleList[idx - 1].id)}
                               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                               style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}>
                               ← Prev
@@ -1414,7 +2207,7 @@ export function AuditPage() {
                           )}
                           {idx < visibleList.length - 1 && (
                             <button
-                              onClick={() => setActiveStage(visibleList[idx + 1].id as StageId)}
+                              onClick={() => setActiveStage(visibleList[idx + 1].id)}
                               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all"
                               style={{ background: G.accent }}>
                               Next →
@@ -1427,23 +2220,22 @@ export function AuditPage() {
                 </div>
 
                 {/* Stage body */}
-                {activeStage === 'planning'         && <PlanningContent eng={eng} />}
-                {activeStage === 'questionnaires'   && <QuestionnaireContent />}
-                {activeStage === 'doc_requests'     && <DocRequestsContent />}
-                {activeStage === 'risk_assessment'  && <RiskContent />}
-                {activeStage === 'gst_verification' && <GSTVerifContent />}
-                {activeStage === 'tds_verification' && <TDSVerifContent />}
-                {activeStage === 'caro'             && <CAROContent auditType={auditType} />}
-                {activeStage === 'working_papers'   && <WorkingPapersContent />}
-                {activeStage === 'observations'     && <ObservationsContent />}
-                {activeStage === 'mgmt_responses'   && <MgmtResponsesContent />}
-                {activeStage === 'review'           && <ReviewContent />}
-                {activeStage === 'signoff'          && <SignOffContent />}
+                {activeStage === 'preliminary'    && <PreliminaryContent eng={eng} showMgmtResponse={!isTaxAudit} />}
+                {activeStage === 'caro'           && <CAROWithApplicabilityContent auditType={auditType} />}
+                {activeStage === 'reconciliation' && <ReconciliationContent />}
+                {activeStage === 'tax_forms'      && <TaxAuditFormsContent />}
+                {activeStage === 'documentation'  && <DocumentationContent />}
+                {activeStage === 'checklist'      && <AuditChecklistContent />}
+                {activeStage === 'observations'   && <ObservationsContent />}
+                {activeStage === 'review'         && <ReviewContent />}
+                {activeStage === 'signoff'        && <SignOffContent />}
               </>
             )
           })()}
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

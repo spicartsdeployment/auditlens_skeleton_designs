@@ -34,7 +34,7 @@ const DEMO_USERS: DemoUser[] = [
     email: 'superadmin@auditlens.demo',
     password: 'super@123',
     icon: Shield,
-    color: '',
+    color: 'bg-danger-50 text-danger-600 border-danger-100',
     description: 'Full access — clients, users, settings',
   },
   {
@@ -43,7 +43,7 @@ const DEMO_USERS: DemoUser[] = [
     email: 'admin@auditlens.demo',
     password: 'admin@123',
     icon: UserCog,
-    color: '',
+    color: 'bg-primary-50 text-primary-600 border-primary-100',
     description: 'Manage tasks, filings, team',
   },
   {
@@ -52,7 +52,7 @@ const DEMO_USERS: DemoUser[] = [
     email: 'article@auditlens.demo',
     password: 'article@123',
     icon: GraduationCap,
-    color: '',
+    color: 'bg-accent-50 text-accent-600 border-accent-100',
     description: 'Assigned tasks & client filings',
   },
 ]
@@ -60,9 +60,8 @@ const DEMO_USERS: DemoUser[] = [
 export function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const IS_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
   const [seeding, setSeeding] = useState(false)
-  const [demoReady, setDemoReady] = useState(IS_MOCK)  // always show in mock mode
+  const [demoReady, setDemoReady] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
 
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -113,9 +112,9 @@ export function LoginPage() {
 
   return (
     <div className="space-y-4">
-      {/* Login card — reference: bg-white rounded-3xl shadow-lg border border-slate-200 */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-lg">
-        <h2 className="mb-6 text-xl font-bold text-slate-900 tracking-tight">Sign in to AuditLens</h2>
+      {/* Login card */}
+      <Card>
+        <h2 className="mb-5 text-xl font-semibold text-neutral-900">Sign in to AuditLens</h2>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <Input
             label="Email"
@@ -133,33 +132,21 @@ export function LoginPage() {
             error={errors.password?.message}
             {...register('password')}
           />
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
-            style={{ background: '#0F172A' }}
-          >
+          <Button type="submit" className="w-full" loading={isSubmitting}>
             <LogIn className="h-4 w-4" aria-hidden />
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
-          </button>
+            Sign in
+          </Button>
         </form>
-      </div>
+      </Card>
 
       {/* Demo section */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <Card padding="sm">
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-sm font-semibold text-neutral-800">Demo Accounts</p>
-            <p className="text-xs text-neutral-500">
-              {IS_MOCK ? (
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: '#0584C7' }} aria-hidden />
-                  Mock mode — no backend needed
-                </span>
-              ) : 'One click to fill credentials'}
-            </p>
+            <p className="text-xs text-neutral-500">One click to fill credentials</p>
           </div>
-          {!IS_MOCK && !demoReady && (
+          {!demoReady && (
             <Button
               variant="outline"
               size="sm"
@@ -173,59 +160,59 @@ export function LoginPage() {
           )}
         </div>
 
-          {!demoReady ? (
-          <p className="text-xs text-slate-400 text-center py-2">
+        {!demoReady ? (
+          <p className="text-xs text-neutral-400 text-center py-2">
             Click "Create" to seed demo accounts, then use the cards to log in instantly.
           </p>
         ) : (
           <div className="space-y-2">
             {DEMO_USERS.map((user) => {
               const Icon = user.icon
-              const colorMap: Record<string, { bg: string; text: string; iconBg: string }> = {
-                'Super Admin': { bg: '#FEF2F2', text: '#B91C1C', iconBg: '#FEE2E2' },
-                'Admin (CA)':  { bg: '#EBF5FD', text: '#0470A9', iconBg: '#C5E5F8' },
-                'Article':     { bg: '#F0FDFA', text: '#0F766E', iconBg: '#CCFBF1' },
-              }
-              const c = colorMap[user.role] ?? colorMap['Article']
               return (
                 <div
                   key={user.email}
-                  className="flex items-center gap-3 rounded-xl border p-3 cursor-pointer hover:opacity-90 active:scale-[0.99] transition-all"
-                  style={{ backgroundColor: c.bg, borderColor: `${c.text}20` }}
+                  className={`flex items-center gap-3 rounded-lg border p-3 ${user.color} cursor-pointer hover:opacity-90 transition-opacity`}
                   onClick={() => fillCredentials(user)}
-                  role="button" tabIndex={0}
+                  role="button"
+                  tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && fillCredentials(user)}
                   aria-label={`Fill credentials for ${user.name} (${user.role})`}
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
-                    style={{ backgroundColor: c.iconBg }}>
-                    <Icon className="h-4 w-4" style={{ color: c.text }} aria-hidden />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/70 shrink-0">
+                    <Icon className="h-4 w-4" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-xs font-bold" style={{ color: c.text }}>{user.role}</p>
-                      <span className="text-xs text-slate-300">·</span>
-                      <p className="text-xs text-slate-600">{user.name}</p>
+                      <p className="text-xs font-semibold">{user.role}</p>
+                      <span className="text-xs opacity-60">·</span>
+                      <p className="text-xs opacity-75">{user.name}</p>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-mono truncate">{user.email}</p>
+                    <p className="text-xs opacity-60 font-financial truncate">{user.email}</p>
+                    <p className="text-xs opacity-50 mt-0.5">{user.description}</p>
                   </div>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); copyToClipboard(user.password, user.email) }}
-                    className="ml-auto shrink-0 rounded-lg p-1.5 hover:bg-white/60 transition-colors"
-                    aria-label={`Copy password for ${user.name}`} title="Copy password"
+                    className="ml-auto shrink-0 rounded p-1 hover:bg-white/40 transition-colors"
+                    aria-label={`Copy password for ${user.name}`}
+                    title="Copy password"
                   >
-                    {copiedEmail === user.email
-                      ? <span className="text-[9px] font-bold text-slate-500">✓</span>
-                      : <Copy className="h-3.5 w-3.5 text-slate-400" aria-hidden />}
+                    {copiedEmail === user.email ? (
+                      <span className="text-[10px] font-medium">Copied!</span>
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 opacity-50" aria-hidden />
+                    )}
                   </button>
                 </div>
               )
             })}
-            <p className="text-center text-[10px] text-slate-400 pt-1">Click a card to auto-fill · then Sign in</p>
+
+            <p className="text-center text-xs text-neutral-400 pt-1">
+              Click a card to auto-fill ↑ then press Sign in
+            </p>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

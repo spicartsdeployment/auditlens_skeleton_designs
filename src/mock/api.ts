@@ -12,7 +12,8 @@ import {
   MOCK_APPROVALS, MOCK_MISSING_DOCS, MOCK_NOTICES,
   MOCK_DOCUMENTS, MOCK_CALENDAR_EVENTS, MOCK_REPORTS, MOCK_FIRM,
 } from './data'
-import type { User, Client, Task, Filing, Thread, Message, Alert } from '@/shared/types'
+import type { ThreadExt, MessageExt } from './data'
+import type { User, Client, Task, Filing, Alert } from '@/shared/types'
 
 let _currentUser: User = MOCK_USERS[0]
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms))
@@ -124,7 +125,14 @@ export const mockComms = {
   listThreads: async () => { await delay(); return { data: MOCK_THREADS } },
   createThread: async (data: any) => {
     await delay()
-    const thread = { ...data, id: Date.now(), firm_id: 1, created_at: new Date().toISOString(), channel: 'internal' as const, unread_count: 0 }
+    const thread: ThreadExt = {
+      ...data,
+      id: Date.now(),
+      firm_id: 1,
+      created_at: new Date().toISOString(),
+      channel: data.channel ?? 'internal',
+      is_group: data.is_group ?? false,
+    }
     MOCK_THREADS.push(thread)
     MOCK_MESSAGES[thread.id] = []
     return { data: thread }
@@ -132,7 +140,15 @@ export const mockComms = {
   getMessages: async (threadId: number) => { await delay(); return { data: MOCK_MESSAGES[threadId] ?? [] } },
   sendMessage: async (threadId: number, content: string) => {
     await delay(200)
-    const msg = { id: Date.now(), thread_id: threadId, sender_id: _currentUser.id, content, is_read: false, created_at: new Date().toISOString(), source: 'internal' as const }
+    const msg: MessageExt = {
+      id: Date.now(),
+      thread_id: threadId,
+      sender_id: _currentUser.id,
+      content,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      source: 'internal',
+    }
     if (!MOCK_MESSAGES[threadId]) MOCK_MESSAGES[threadId] = []
     MOCK_MESSAGES[threadId].push(msg)
     return { data: msg }

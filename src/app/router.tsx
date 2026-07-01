@@ -8,19 +8,16 @@ import { SkeletonCard } from '@/shared/components/Skeleton'
 import { LoginPage } from '@/features/auth/LoginPage'
 
 const DashboardPage        = lazy(() => import('@/features/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
-const ComplianceWorkspace  = lazy(() => import('@/features/workspace/ComplianceWorkspace').then(m => ({ default: m.ComplianceWorkspace })))
+const WorkCenterPage       = lazy(() => import('@/features/workcenter/WorkCenterPage').then(m => ({ default: m.WorkCenterPage })))
+const ClientOnboardPage    = lazy(() => import('@/features/clients/ClientOnboardPage').then(m => ({ default: m.ClientOnboardPage })))
 const ClientsPage          = lazy(() => import('@/features/clients/ClientsPage').then(m => ({ default: m.ClientsPage })))
 const ClientDetailPage     = lazy(() => import('@/features/clients/ClientDetailPage').then(m => ({ default: m.ClientDetailPage })))
-const ClientOnboardPage    = lazy(() => import('@/features/clients/ClientOnboardPage').then(m => ({ default: m.ClientOnboardPage })))
 const UsersPage            = lazy(() => import('@/features/users/UsersPage').then(m => ({ default: m.UsersPage })))
-const TasksPage            = lazy(() => import('@/features/tasks/TasksPage').then(m => ({ default: m.TasksPage })))
 const GSTPage              = lazy(() => import('@/features/gst/GSTPage').then(m => ({ default: m.GSTPage })))
 const TDSPage              = lazy(() => import('@/features/tds/TDSPage').then(m => ({ default: m.TDSPage })))
 const AuditPage            = lazy(() => import('@/features/audit/AuditPage').then(m => ({ default: m.AuditPage })))
 const CommunicationPage    = lazy(() => import('@/features/communication/CommunicationPage').then(m => ({ default: m.CommunicationPage })))
 const DocumentsPage        = lazy(() => import('@/features/documents/DocumentsPage').then(m => ({ default: m.DocumentsPage })))
-const NoticesPage          = lazy(() => import('@/features/notices/NoticesPage').then(m => ({ default: m.NoticesPage })))
-const WorkCenterPage       = lazy(() => import('@/features/workcenter/WorkCenterPage').then(m => ({ default: m.WorkCenterPage })))
 const SettingsPage         = lazy(() => import('@/features/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const NotFoundPage         = lazy(() => import('@/features/error/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
 const ForbiddenPage        = lazy(() => import('@/features/error/ForbiddenPage').then(m => ({ default: m.ForbiddenPage })))
@@ -52,7 +49,7 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <Lazy><DashboardPage /></Lazy> },
-          { path: 'workspace', element: <Lazy><ComplianceWorkspace /></Lazy> },
+          { path: 'workspace', element: <Navigate to="/workcenter" replace /> },
           { path: 'workcenter', element: <Lazy><WorkCenterPage /></Lazy> },
           {
             path: 'clients',
@@ -91,6 +88,7 @@ export const router = createBrowserRouter([
           },
           { path: 'documents', element: <Lazy><DocumentsPage /></Lazy> },
           { path: 'calendar', element: <Navigate to="/" replace /> },
+          { path: 'reports', element: <Navigate to="/" replace /> },
           { path: 'notices', element: <Navigate to="/workcenter" replace /> },
           { path: 'settings', element: <Lazy><SettingsPage /></Lazy> },
           { path: '403', element: <Lazy><ForbiddenPage /></Lazy> },

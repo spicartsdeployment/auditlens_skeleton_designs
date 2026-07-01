@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Users, Trash2, Settings, Phone, Mail, Shield,
   UserCheck, Clock, Search, ChevronDown, CheckCircle2,
-  AlertTriangle, UserX, LayoutGrid, List, ChevronRight,
+  AlertTriangle, UserX,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,22 +19,22 @@ import { usePermission } from '@/shared/hooks/usePermission'
 import type { User, PermissionOverride } from '@/shared/types'
 
 const G = {
-  canvas: '#F8FAFC',
-  white: '#FFFFFF',
-  border: '#E2E8F0',
-  icon: '#94A3B8',
+  canvas:    '#F8FAFC',
+  white:     '#FFFFFF',
+  border:    '#E2E8F0',
+  icon:      '#94A3B8',
   secondary: '#475569',
-  primary: '#0F172A',
+  primary:   '#0F172A',
 } as const
 
 const createSchema = z.object({
-  full_name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Minimum 8 characters'),
-  role: z.enum(['super_admin', 'admin', 'article']),
-  phone: z.string().optional(),
-  emergency_name: z.string().optional(),
-  emergency_phone: z.string().optional(),
+  full_name:        z.string().min(1, 'Name is required'),
+  email:            z.string().email('Invalid email'),
+  password:         z.string().min(8, 'Minimum 8 characters'),
+  role:             z.enum(['super_admin', 'admin', 'article']),
+  phone:            z.string().optional(),
+  emergency_name:   z.string().optional(),
+  emergency_phone:  z.string().optional(),
 })
 type CreateForm = z.infer<typeof createSchema>
 
@@ -42,40 +42,8 @@ const SCREENS = ['clients', 'tasks', 'gst', 'tds', 'audit', 'users', 'communicat
 
 const ROLE_META: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   super_admin: { label: 'Super Admin', color: '#DC2626', bg: '#FEF2F2', icon: Shield },
-  admin: { label: 'Admin CA', color: '#0584C7', bg: '#EFF6FF', icon: UserCheck },
-  article: { label: 'Article', color: '#475569', bg: '#F8FAFC', icon: Users },
-}
-
-type ViewMode = 'folder' | 'list'
-type RoleFilter = 'all' | 'super_admin' | 'admin' | 'article'
-type StatusFilter = 'all' | 'active' | 'inactive'
-
-// ── View Toggle ───────────────────────────────────────────
-function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
-  return (
-    <div className="flex rounded-xl overflow-hidden shrink-0"
-      style={{ border: `1px solid ${G.border}`, background: G.white }}>
-      <button onClick={() => onChange('folder')}
-        className="flex items-center justify-center h-[34px] w-[34px] transition-all"
-        style={{
-          background: view === 'folder' ? G.primary : 'transparent',
-          color: view === 'folder' ? '#FFFFFF' : G.icon,
-        }}
-        aria-label="Folder view" title="Folder view">
-        <LayoutGrid className="h-3.5 w-3.5" />
-      </button>
-      <button onClick={() => onChange('list')}
-        className="flex items-center justify-center h-[34px] w-[34px] transition-all"
-        style={{
-          background: view === 'list' ? G.primary : 'transparent',
-          color: view === 'list' ? '#FFFFFF' : G.icon,
-          borderLeft: `1px solid ${G.border}`,
-        }}
-        aria-label="List view" title="List view">
-        <List className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  )
+  admin:       { label: 'Admin CA',    color: '#0584C7', bg: '#EFF6FF', icon: UserCheck },
+  article:     { label: 'Article',     color: '#475569', bg: '#F8FAFC', icon: Users },
 }
 
 // ── Permission matrix ─────────────────────────────────────
@@ -123,8 +91,14 @@ function PermissionMatrix({ userId, onClose }: { userId: number; onClose: () => 
                 <td className="py-2.5 px-4 capitalize text-sm font-medium" style={{ color: G.primary }}>{screen}</td>
                 {(['can_view', 'can_create', 'can_edit', 'can_delete'] as const).map((field) => (
                   <td key={field} className="text-center py-2.5 px-3">
-                    <input type="checkbox" checked={perms[screen][field]} onChange={() => toggle(screen, field)}
-                      aria-label={`${field.replace('can_', '')} ${screen}`} className="h-4 w-4 rounded" style={{ accentColor: G.primary }} />
+                    <input
+                      type="checkbox"
+                      checked={perms[screen][field]}
+                      onChange={() => toggle(screen, field)}
+                      aria-label={`${field.replace('can_', '')} ${screen}`}
+                      className="h-4 w-4 rounded"
+                      style={{ accentColor: G.primary }}
+                    />
                   </td>
                 ))}
               </tr>
@@ -146,7 +120,7 @@ function PermissionMatrix({ userId, onClose }: { userId: number; onClose: () => 
   )
 }
 
-// ── User Card (Folder View) ──────────────────────────────
+// ── User Card ─────────────────────────────────────────────
 function UserCard({ user, onPermissions, onDelete }: {
   user: User; onPermissions: (id: number) => void; onDelete: (id: number, name: string) => void
 }) {
@@ -161,8 +135,10 @@ function UserCard({ user, onPermissions, onDelete }: {
       onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(15,23,42,0.10)'}
       onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px rgba(15,23,42,0.06)'}>
 
+      {/* Card header */}
       <div className="p-4">
         <div className="flex items-start gap-3">
+          {/* Avatar */}
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white"
             style={{ background: G.primary }}>
             {initials}
@@ -170,12 +146,14 @@ function UserCard({ user, onPermissions, onDelete }: {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold truncate" style={{ color: G.primary }}>{user.full_name}</p>
             <p className="text-xs truncate mt-0.5" style={{ color: G.secondary }}>{user.email}</p>
+            {/* Role badge */}
             <span className="inline-flex items-center gap-1 mt-1.5 rounded-full text-[10px] font-semibold px-2 py-0.5"
               style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.color}22` }}>
               <RoleIcon className="h-2.5 w-2.5" />
               {meta.label}
             </span>
           </div>
+          {/* Status dot */}
           <div className="shrink-0 flex flex-col items-end gap-1">
             <div className="flex items-center gap-1.5">
               <div className="h-2 w-2 rounded-full" style={{ background: user.is_active ? '#22C55E' : G.icon }} />
@@ -186,6 +164,7 @@ function UserCard({ user, onPermissions, onDelete }: {
           </div>
         </div>
 
+        {/* Phone quick view */}
         {(user as any).phone && (
           <div className="flex items-center gap-2 mt-3 rounded-xl px-3 py-2" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
             <Phone className="h-3.5 w-3.5 shrink-0" style={{ color: G.icon }} />
@@ -193,6 +172,7 @@ function UserCard({ user, onPermissions, onDelete }: {
           </div>
         )}
 
+        {/* Last active */}
         <div className="flex items-center gap-1.5 mt-2.5">
           <Clock className="h-3 w-3" style={{ color: G.icon }} />
           <span className="text-[10px]" style={{ color: G.icon }}>
@@ -201,12 +181,14 @@ function UserCard({ user, onPermissions, onDelete }: {
         </div>
       </div>
 
+      {/* Emergency contact section */}
       {((user as any).emergency_name || (user as any).emergency_phone) && (
         <div className="px-4 pb-3">
           <button
             className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all"
             style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}
-            onClick={() => setShowContact(o => !o)}>
+            onClick={() => setShowContact(o => !o)}
+          >
             <span className="flex items-center gap-1.5">
               <AlertTriangle className="h-3 w-3" style={{ color: '#D97706' }} />
               Emergency Contact
@@ -233,12 +215,15 @@ function UserCard({ user, onPermissions, onDelete }: {
         </div>
       )}
 
+      {/* Action strip */}
       <div className="flex items-center gap-0 px-3 pb-3" style={{ borderTop: `1px solid ${G.border}` }}>
         <Can roles={['super_admin']}>
           <button
             className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-xl mt-2 mr-1 transition-all"
             style={{ background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }}
-            onClick={() => onPermissions(user.id)} title="Edit permissions">
+            onClick={() => onPermissions(user.id)}
+            title="Edit permissions"
+          >
             <Settings className="h-3.5 w-3.5" /> Permissions
           </button>
         </Can>
@@ -246,126 +231,14 @@ function UserCard({ user, onPermissions, onDelete }: {
           <button
             className="flex items-center justify-center rounded-xl mt-2 p-2 transition-all"
             style={{ color: '#DC2626' }}
-            onClick={() => onDelete(user.id, user.full_name)} title={`Delete ${user.full_name}`}>
+            onClick={() => onDelete(user.id, user.full_name)}
+            title={`Delete ${user.full_name}`}
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         </Can>
       </div>
     </div>
-  )
-}
-
-// ── User Row (List View) ─────────────────────────────────
-function UserRow({ user, onPermissions, onDelete }: {
-  user: User; onPermissions: (id: number) => void; onDelete: (id: number, name: string) => void
-}) {
-  const meta = ROLE_META[user.role] ?? ROLE_META.article
-  const RoleIcon = meta.icon
-  const initials = user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-
-  return (
-    <tr className="transition-colors"
-      style={{ borderBottom: `1px solid ${G.border}` }}
-      onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = G.canvas)}
-      onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}>
-
-      {/* User */}
-      <td className="px-3 py-2.5" style={{ maxWidth: 200 }}>
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
-            style={{ background: G.primary }}>
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold truncate" title={user.full_name}
-              style={{ color: G.primary, maxWidth: 150 }}>
-              {user.full_name}
-            </p>
-            <p className="text-[9px] truncate" title={user.email}
-              style={{ color: G.icon, maxWidth: 150 }}>
-              {user.email}
-            </p>
-          </div>
-        </div>
-      </td>
-
-      {/* Role */}
-      <td className="px-3 py-2.5">
-        <span className="inline-flex items-center gap-1 rounded-full text-[9px] font-semibold px-2 py-0.5"
-          style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.color}22` }}>
-          <RoleIcon className="h-2.5 w-2.5" />
-          {meta.label}
-        </span>
-      </td>
-
-      {/* Phone */}
-      <td className="px-3 py-2.5 hidden md:table-cell" style={{ maxWidth: 130 }}>
-        <span className="text-xs truncate block" title={(user as any).phone || '—'}
-          style={{ color: G.secondary, maxWidth: 120 }}>
-          {(user as any).phone || '—'}
-        </span>
-      </td>
-
-      {/* Emergency Contact */}
-      <td className="px-3 py-2.5 hidden lg:table-cell" style={{ maxWidth: 140 }}>
-        {(user as any).emergency_name ? (
-          <div className="min-w-0">
-            <p className="text-xs truncate font-medium" title={(user as any).emergency_name}
-              style={{ color: G.secondary, maxWidth: 130 }}>
-              {(user as any).emergency_name}
-            </p>
-            {(user as any).emergency_phone && (
-              <p className="text-[9px] truncate" style={{ color: G.icon }}>
-                {(user as any).emergency_phone}
-              </p>
-            )}
-          </div>
-        ) : (
-          <span className="text-[10px]" style={{ color: G.icon }}>—</span>
-        )}
-      </td>
-
-      {/* Last Active */}
-      <td className="px-3 py-2.5 hidden lg:table-cell">
-        <span className="text-[10px]" style={{ color: G.icon }}>
-          {user.last_active ? new Date(user.last_active).toLocaleDateString('en-IN') : 'Never'}
-        </span>
-      </td>
-
-      {/* Status */}
-      <td className="px-3 py-2.5">
-        <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-          style={{
-            background: user.is_active ? '#F0FDF4' : G.canvas,
-            color: user.is_active ? '#166534' : G.icon,
-            border: `1px solid ${user.is_active ? '#BBF7D0' : G.border}`,
-          }}>
-          <span className="h-1 w-1 rounded-full"
-            style={{ background: user.is_active ? '#16A34A' : G.icon }} />
-          {user.is_active ? 'Active' : 'Inactive'}
-        </span>
-      </td>
-
-      {/* Actions */}
-      <td className="px-3 py-2.5">
-        <div className="flex items-center gap-1">
-          <Can roles={['super_admin']}>
-            <button onClick={() => onPermissions(user.id)} title="Edit permissions"
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold transition-all"
-              style={{ background: '#EFF6FF', color: '#2563EB' }}>
-              <Settings className="h-2.5 w-2.5" />Permissions
-            </button>
-          </Can>
-          <Can roles={['super_admin']}>
-            <button onClick={() => onDelete(user.id, user.full_name)} title={`Delete ${user.full_name}`}
-              className="flex items-center justify-center rounded p-1 transition-all"
-              style={{ color: '#DC2626' }}>
-              <Trash2 className="h-3 w-3" />
-            </button>
-          </Can>
-        </div>
-      </td>
-    </tr>
   )
 }
 
@@ -376,9 +249,7 @@ export function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [permUserId, setPermUserId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -402,83 +273,16 @@ export function UsersPage() {
     onError: () => toast.error('Failed to delete user'),
   })
 
-  const allUsers = users as User[]
+  const filtered = (users as User[]).filter(u => {
+    const matchSearch = !search || u.full_name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
+    const matchRole = roleFilter === 'all' || u.role === roleFilter
+    return matchSearch && matchRole
+  })
 
-  const statusCounts = {
-    all: allUsers.length,
-    active: allUsers.filter(u => u.is_active).length,
-    inactive: allUsers.filter(u => !u.is_active).length,
-  }
-
-  const roleCounts = allUsers.reduce<Record<string, number>>((acc, u) => {
+  const roleCounts = (users as User[]).reduce<Record<string, number>>((acc, u) => {
     acc[u.role] = (acc[u.role] ?? 0) + 1
     return acc
   }, {})
-
-  const filtered = allUsers.filter(u => {
-    const matchSearch = !search ||
-      u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-    const matchRole = roleFilter === 'all' || u.role === roleFilter
-    const matchStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && u.is_active) ||
-      (statusFilter === 'inactive' && !u.is_active)
-    return matchSearch && matchRole && matchStatus
-  })
-
-  // Clickable KPI card data
-  const kpiCards: {
-    key: RoleFilter
-    label: string
-    value: number
-    icon: React.ElementType
-    color: string
-    activeColor: string
-    activeBg: string
-    activeBorder: string
-  }[] = [
-      {
-        key: 'all',
-        label: 'Total Users',
-        value: allUsers.length,
-        icon: Users,
-        color: G.primary,
-        activeColor: G.primary,
-        activeBg: '#F1F5F9',
-        activeBorder: '#94A3B8',
-      },
-      {
-        key: 'super_admin',
-        label: 'Super Admins',
-        value: roleCounts.super_admin ?? 0,
-        icon: Shield,
-        color: '#DC2626',
-        activeColor: '#DC2626',
-        activeBg: '#FEF2F2',
-        activeBorder: '#FECACA',
-      },
-      {
-        key: 'admin',
-        label: 'Admins (CA)',
-        value: roleCounts.admin ?? 0,
-        icon: UserCheck,
-        color: '#0584C7',
-        activeColor: '#0584C7',
-        activeBg: '#EFF6FF',
-        activeBorder: '#BFDBFE',
-      },
-      {
-        key: 'article',
-        label: 'Articles',
-        value: roleCounts.article ?? 0,
-        icon: Users,
-        color: G.secondary,
-        activeColor: G.secondary,
-        activeBg: '#F8FAFC',
-        activeBorder: '#CBD5E1',
-      },
-    ]
 
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto" style={{ background: G.canvas }}>
@@ -487,155 +291,69 @@ export function UsersPage() {
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-bold" style={{ color: G.primary }}>Team Members</h1>
+          <p className="text-sm mt-0.5" style={{ color: G.secondary }}>{(users as User[]).length} users · {(users as User[]).filter(u => u.is_active).length} active</p>
         </div>
         <button
           className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all"
           style={{ background: G.primary }}
-          onClick={() => setCreateOpen(true)}>
+          onClick={() => setCreateOpen(true)}
+        >
           <Plus className="h-4 w-4" /> Add User
         </button>
       </div>
 
-      {/* KPI Cards (column) + Active/Inactive sidebar */}
-      <div className="flex flex-col lg:flex-row gap-4 mb-6">
-        {/* KPI Cards — stacked in a column */}
-        <div className="flex flex-row gap-2 flex-1">
-          {kpiCards.map(card => {
-            const CardIcon = card.icon
-            const isActive = roleFilter === card.key
-            return (
-              <button
-                key={card.key}
-                onClick={() => setRoleFilter(isActive && card.key !== 'all' ? 'all' : card.key)}
-                className="rounded-xl p-3 flex items-center gap-3 transition-all text-left w-full"
-                style={{
-                  background: isActive ? card.activeBg : G.white,
-                  border: `1.5px solid ${isActive ? card.activeBorder : G.border}`,
-                  boxShadow: isActive
-                    ? `0 0 0 1px ${card.activeBorder}40`
-                    : '0 1px 3px rgba(15,23,42,0.04)',
-                }}
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
-                  style={{
-                    background: isActive ? `${card.activeColor}15` : G.canvas,
-                    border: `1px solid ${isActive ? card.activeBorder : G.border}`,
-                  }}>
-                  <CardIcon className="h-4 w-4" style={{ color: card.color }} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-medium" style={{ color: G.secondary }}>{card.label}</p>
-                  <p className="text-xl font-bold tabular-nums leading-tight" style={{ color: card.activeColor }}>
-                    {card.value}
-                  </p>
-                </div>
-                {isActive && card.key !== 'all' && (
-                  <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: `${card.activeColor}15`, color: card.activeColor }}>
-                    Filtered
-                  </span>
-                )}
-                {!isActive && (
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0" style={{ color: G.icon }} />
-                )}
-              </button>
-            )
-          })}
-
-
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
-            className="rounded-xl p-3.5 flex items-center gap-3 transition-all text-left"
-            style={{
-              background: statusFilter === 'active' ? '#F0FDF4' : G.white,
-              border: `1.5px solid ${statusFilter === 'active' ? '#86EFAC' : G.border}`,
-              boxShadow: statusFilter === 'active' ? '0 0 0 1px rgba(22,163,74,0.1)' : 'none',
-            }}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
-              style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-              <CheckCircle2 className="h-4 w-4" style={{ color: '#16A34A' }} />
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: 'Total Users',  value: (users as User[]).length, icon: Users,      color: G.primary },
+          { label: 'Super Admins', value: roleCounts.super_admin ?? 0, icon: Shield,  color: '#DC2626' },
+          { label: 'Admins (CA)',  value: roleCounts.admin ?? 0, icon: UserCheck,     color: '#0584C7' },
+          { label: 'Articles',     value: roleCounts.article ?? 0, icon: Users,       color: G.secondary },
+        ].map(stat => {
+          const StatIcon = stat.icon
+          return (
+            <div key={stat.label} className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: G.white, border: `1px solid ${G.border}` }}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
+                <StatIcon className="h-4 w-4" style={{ color: stat.color }} />
+              </div>
+              <div>
+                <p className="text-xl font-bold tabular-nums" style={{ color: G.primary }}>{stat.value}</p>
+                <p className="text-[10px]" style={{ color: G.secondary }}>{stat.label}</p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xl font-bold tabular-nums leading-tight" style={{ color: '#16A34A' }}>
-                {statusCounts.active}
-              </p>
-              <p className="text-[9px] font-semibold mt-0.5" style={{ color: '#166534' }}>Active Users</p>
-            </div>
-            {statusFilter === 'active' && (
-              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
-                style={{ background: '#DCFCE7', color: '#166534' }}>
-                ✓
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive')}
-            className="rounded-xl p-3.5 flex items-center gap-3 transition-all text-left"
-            style={{
-              background: statusFilter === 'inactive' ? '#FEF2F2' : G.white,
-              border: `1.5px solid ${statusFilter === 'inactive' ? '#FECACA' : G.border}`,
-              boxShadow: statusFilter === 'inactive' ? '0 0 0 1px rgba(220,38,38,0.1)' : 'none',
-            }}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
-              style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
-              <UserX className="h-4 w-4" style={{ color: G.icon }} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xl font-bold tabular-nums leading-tight"
-                style={{ color: statusCounts.inactive > 0 ? '#DC2626' : G.icon }}>
-                {statusCounts.inactive}
-              </p>
-              <p className="text-[9px] font-semibold mt-0.5" style={{ color: G.secondary }}>Inactive Users</p>
-            </div>
-            {statusFilter === 'inactive' && (
-              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
-                style={{ background: '#FECACA', color: '#991B1B' }}>
-                ✓
-              </span>
-            )}
-          </button>
-
-        </div>
-
-        {/* Active / Inactive sidebar */}
-
+          )
+        })}
       </div>
 
-      {/* Active filter indicator */}
-      {(roleFilter !== 'all' || statusFilter !== 'all') && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-
-          {statusFilter !== 'all' && (
-            <button
-              onClick={() => setStatusFilter('all')}
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-all"
-              style={{
-                background: statusFilter === 'active' ? '#F0FDF4' : '#FEF2F2',
-                color: statusFilter === 'active' ? '#166534' : '#991B1B',
-                border: `1px solid ${statusFilter === 'active' ? '#BBF7D0' : '#FECACA'}`,
-              }}>
-              {statusFilter === 'active' ? 'Active' : 'Inactive'}
-              <span className="ml-0.5 opacity-60">✕</span>
-            </button>
-          )}
-
-        </div>
-      )}
-
-      {/* Search + View Toggle */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1 max-w-md">
+      {/* Filters */}
+      <div className="flex items-center gap-2 mb-5 rounded-2xl p-3" style={{ background: G.white, border: `1px solid ${G.border}` }}>
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" style={{ color: G.icon }} />
-          <input type="text" placeholder="Search by name or email…" value={search}
+          <input
+            type="text" placeholder="Search users..." value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-xl pl-8 pr-3 py-[7px] text-xs outline-none"
-            style={{ background: G.white, border: `1px solid ${G.border}`, color: G.primary }} />
+            className="rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none"
+            style={{ width: 200, background: G.canvas, border: `1px solid ${G.border}`, color: G.primary }}
+          />
         </div>
-        <div className="flex-1" />
-        <ViewToggle view={viewMode} onChange={setViewMode} />
+        <div className="w-px h-6 shrink-0" style={{ background: G.border }} />
+        <div className="flex gap-1.5">
+          {['all', 'super_admin', 'admin', 'article'].map(r => (
+            <button key={r}
+              className="rounded-full px-3 py-1 text-xs font-semibold transition-all"
+              style={roleFilter === r
+                ? { background: G.primary, color: '#FFFFFF' }
+                : { background: G.canvas, border: `1px solid ${G.border}`, color: G.secondary }
+              }
+              onClick={() => setRoleFilter(r)}>
+              {r === 'all' ? 'All' : r === 'super_admin' ? 'Super Admin' : r === 'admin' ? 'Admin CA' : 'Article'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Content */}
+      {/* User cards grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
@@ -645,70 +363,21 @@ export function UsersPage() {
           style={{ background: G.white, border: `1px solid ${G.border}` }}>
           <UserX className="h-12 w-12" style={{ color: G.icon }} />
           <p className="text-sm font-semibold" style={{ color: G.primary }}>No users found</p>
-          <p className="text-xs" style={{ color: G.secondary }}>
-            {(roleFilter !== 'all' || statusFilter !== 'all')
-              ? 'No users match the current filters'
-              : 'Try adjusting your search'}
-          </p>
-          {(roleFilter !== 'all' || statusFilter !== 'all') && (
-            <button className="mt-1 text-xs font-semibold underline" style={{ color: '#0584C7' }}
-              onClick={() => { setRoleFilter('all'); setStatusFilter('all') }}>
-              Clear all filters
-            </button>
-          )}
-        </div>
-      ) : viewMode === 'folder' ? (
-        /* ── FOLDER (GRID) VIEW ── */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(user => (
-            <UserCard key={user.id} user={user}
-              onPermissions={setPermUserId}
-              onDelete={(id, name) => { if (confirm(`Delete ${name}?`)) deleteMutation.mutate(id) }} />
-          ))}
+          <p className="text-xs" style={{ color: G.secondary }}>Try adjusting your search or filters</p>
+          <button className="mt-2 rounded-xl px-4 py-2 text-sm font-semibold text-white" style={{ background: G.primary }} onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 inline mr-1.5" />Add First User
+          </button>
         </div>
       ) : (
-        /* ── LIST (TABLE) VIEW ── */
-        <div className="rounded-2xl overflow-hidden"
-          style={{ background: G.white, border: `1px solid ${G.border}`, boxShadow: '0 1px 3px rgba(15,23,42,0.06)' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '22%' }} />
-                <col style={{ width: '12%' }} />
-                <col className="hidden md:table-column" style={{ width: '14%' }} />
-                <col className="hidden lg:table-column" style={{ width: '16%' }} />
-                <col className="hidden lg:table-column" style={{ width: '10%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '14%' }} />
-              </colgroup>
-              <thead>
-                <tr style={{ background: G.canvas }}>
-                  {[
-                    { label: 'User', className: '' },
-                    { label: 'Role', className: '' },
-                    { label: 'Phone', className: 'hidden md:table-cell' },
-                    { label: 'Emergency Contact', className: 'hidden lg:table-cell' },
-                    { label: 'Last Active', className: 'hidden lg:table-cell' },
-                    { label: 'Status', className: '' },
-                    { label: 'Actions', className: '' },
-                  ].map((h, i) => (
-                    <th key={i}
-                      className={`text-left px-3 py-2.5 text-[9px] font-semibold uppercase tracking-wider border-b whitespace-nowrap ${h.className}`}
-                      style={{ color: G.secondary, borderColor: G.border }}>
-                      {h.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(user => (
-                  <UserRow key={user.id} user={user}
-                    onPermissions={setPermUserId}
-                    onDelete={(id, name) => { if (confirm(`Delete ${name}?`)) deleteMutation.mutate(id) }} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map(user => (
+            <UserCard
+              key={user.id}
+              user={user}
+              onPermissions={setPermUserId}
+              onDelete={(id, name) => { if (confirm(`Delete ${name}?`)) deleteMutation.mutate(id) }}
+            />
+          ))}
         </div>
       )}
 
@@ -721,11 +390,12 @@ export function UsersPage() {
           <div className="grid grid-cols-2 gap-3">
             <Input label="Phone" type="tel" placeholder="+91 98765 43210" {...register('phone')} />
             <Select label="Role" options={[
-              { value: 'article', label: 'Article / Intern' },
-              { value: 'admin', label: 'Admin (Qualified CA)' },
+              { value: 'article',    label: 'Article / Intern' },
+              { value: 'admin',      label: 'Admin (Qualified CA)' },
               ...(isSuperAdmin() ? [{ value: 'super_admin', label: 'Super Admin' }] : []),
             ]} />
           </div>
+          {/* Emergency contact */}
           <div className="rounded-xl p-3 space-y-3" style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
             <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: G.secondary }}>
               <AlertTriangle className="h-3.5 w-3.5" style={{ color: '#D97706' }} />
@@ -750,8 +420,13 @@ export function UsersPage() {
       </Modal>
 
       {/* Permission matrix modal */}
-      <Modal open={permUserId !== null} onOpenChange={(o) => { if (!o) setPermUserId(null) }}
-        title="Edit Permissions" description="Control screen-level access for this user." size="lg">
+      <Modal
+        open={permUserId !== null}
+        onOpenChange={(o) => { if (!o) setPermUserId(null) }}
+        title="Edit Permissions"
+        description="Control screen-level access for this user."
+        size="lg"
+      >
         {permUserId && <PermissionMatrix userId={permUserId} onClose={() => setPermUserId(null)} />}
       </Modal>
     </div>

@@ -10,12 +10,12 @@
 import { cn } from './cn'
 
 export const G = {
-  canvas: '#F8FAFC',
-  white: '#FFFFFF',
-  border: '#E2E8F0',
-  icon: '#94A3B8',
+  canvas:    '#F8FAFC',
+  white:     '#FFFFFF',
+  border:    '#E2E8F0',
+  icon:      '#94A3B8',
   secondary: '#475569',
-  primary: '#0F172A',
+  primary:   '#0F172A',
 } as const
 
 /** White KPI metric card — no color tints */
@@ -97,7 +97,7 @@ export function TabBar<T extends string>({
   tabs, active, onChange,
 }: { tabs: T[]; active: T; onChange: (t: T) => void }) {
   return (
-    <div className="flex gap-0.5 rounded-xl p-0.5 w-fit"
+    <div className="flex gap-0.5 rounded-xl p-0.5 w-fit mb-5"
       style={{ background: G.canvas, border: `1px solid ${G.border}` }}>
       {tabs.map(t => (
         <button key={t} onClick={() => onChange(t)}
